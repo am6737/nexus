@@ -242,8 +242,35 @@ func (s *StdConn) WriteTo(b []byte, addr *Addr) error {
 }
 
 func (s *StdConn) ReloadConfig(c *config.Config) {
-	//TODO implement me
-	panic("implement me")
+	b := c.Listen.ReadBuffer
+	if b > 0 {
+		err := s.SetRecvBuffer(b)
+		if err == nil {
+			rb, err := s.GetRecvBuffer()
+			if err == nil {
+				s.l.WithField("size", rb).Info("listen.read_buffer was set")
+			} else {
+				s.l.WithError(err).Warn("Failed to get listen.read_buffer")
+			}
+		} else {
+			s.l.WithError(err).Error("Failed to set listen.read_buffer")
+		}
+	}
+
+	b = c.Listen.WriteBuffer
+	if b > 0 {
+		err := s.SetSendBuffer(b)
+		if err == nil {
+			rb, err := s.GetSendBuffer()
+			if err == nil {
+				s.l.WithField("size", rb).Info("listen.write_buffer was set")
+			} else {
+				s.l.WithError(err).Warn("Failed to get listen.write_buffer")
+			}
+		} else {
+			s.l.WithError(err).Error("Failed to set listen.write_buffer")
+		}
+	}
 }
 
 func (s *StdConn) Close() error {
@@ -251,7 +278,7 @@ func (s *StdConn) Close() error {
 	return syscall.Close(s.sysFd)
 }
 
-func (u *StdConn) writeTo6(b []byte, addr *Addr) error {
+func (s *StdConn) writeTo6(b []byte, addr *Addr) error {
 	var rsa unix.RawSockaddrInet6
 	rsa.Family = unix.AF_INET6
 	// Little Endian -> Network Endian
@@ -261,7 +288,7 @@ func (u *StdConn) writeTo6(b []byte, addr *Addr) error {
 	for {
 		_, _, err := unix.Syscall6(
 			unix.SYS_SENDTO,
-			uintptr(u.sysFd),
+			uintptr(s.sysFd),
 			uintptr(unsafe.Pointer(&b[0])),
 			uintptr(len(b)),
 			uintptr(0),
@@ -279,7 +306,7 @@ func (u *StdConn) writeTo6(b []byte, addr *Addr) error {
 	}
 }
 
-func (u *StdConn) writeTo4(b []byte, addr *Addr) error {
+func (s *StdConn) writeTo4(b []byte, addr *Addr) error {
 	addrV4, isAddrV4 := maybeIPV4(addr.IP)
 	if !isAddrV4 {
 		return fmt.Errorf("Listener is IPv4, but writing to IPv6 remote")
@@ -294,7 +321,7 @@ func (u *StdConn) writeTo4(b []byte, addr *Addr) error {
 	for {
 		_, _, err := unix.Syscall6(
 			unix.SYS_SENDTO,
-			uintptr(u.sysFd),
+			uintptr(s.sysFd),
 			uintptr(unsafe.Pointer(&b[0])),
 			uintptr(len(b)),
 			uintptr(0),
