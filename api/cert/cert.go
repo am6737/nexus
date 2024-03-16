@@ -3,7 +3,7 @@ package cert
 import "sync/atomic"
 
 type NebulaCertificate struct {
-	Details   NebulaCertificateDetails
+	//Details   NebulaCertificateDetails
 	Signature []byte
 
 	// the cached hex string of the calculated sha256sum

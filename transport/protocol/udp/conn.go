@@ -4,6 +4,8 @@ import (
 	"github.com/am6737/nexus/config"
 )
 
+const MTU = 9001
+
 type EncReader func(addr *Addr, out []byte, packet []byte)
 
 type Conn interface {

@@ -1,3 +1,7 @@
+//go:build (!linux || android) && !e2e_testing
+// +build !linux android
+// +build !e2e_testing
+
 package udp
 
 import (
