@@ -235,8 +235,10 @@ func (s *StdConn) PrepareRawMessages(n int) ([]rawMessage, [][]byte, [][]byte) {
 }
 
 func (s *StdConn) WriteTo(b []byte, addr *Addr) error {
-	//TODO implement me
-	panic("implement me")
+	if s.isV4 {
+		return s.writeTo4(b, addr)
+	}
+	return s.writeTo6(b, addr)
 }
 
 func (s *StdConn) ReloadConfig(c *config.Config) {
@@ -245,6 +247,67 @@ func (s *StdConn) ReloadConfig(c *config.Config) {
 }
 
 func (s *StdConn) Close() error {
-	//TODO implement me
-	panic("implement me")
+	//TODO: this will not interrupt the read loop
+	return syscall.Close(s.sysFd)
+}
+
+func (u *StdConn) writeTo6(b []byte, addr *Addr) error {
+	var rsa unix.RawSockaddrInet6
+	rsa.Family = unix.AF_INET6
+	// Little Endian -> Network Endian
+	rsa.Port = (addr.Port >> 8) | ((addr.Port & 0xff) << 8)
+	copy(rsa.Addr[:], addr.IP.To16())
+
+	for {
+		_, _, err := unix.Syscall6(
+			unix.SYS_SENDTO,
+			uintptr(u.sysFd),
+			uintptr(unsafe.Pointer(&b[0])),
+			uintptr(len(b)),
+			uintptr(0),
+			uintptr(unsafe.Pointer(&rsa)),
+			uintptr(unix.SizeofSockaddrInet6),
+		)
+
+		if err != 0 {
+			return &net.OpError{Op: "sendto", Err: err}
+		}
+
+		//TODO: handle incomplete writes
+
+		return nil
+	}
+}
+
+func (u *StdConn) writeTo4(b []byte, addr *Addr) error {
+	addrV4, isAddrV4 := maybeIPV4(addr.IP)
+	if !isAddrV4 {
+		return fmt.Errorf("Listener is IPv4, but writing to IPv6 remote")
+	}
+
+	var rsa unix.RawSockaddrInet4
+	rsa.Family = unix.AF_INET
+	// Little Endian -> Network Endian
+	rsa.Port = (addr.Port >> 8) | ((addr.Port & 0xff) << 8)
+	copy(rsa.Addr[:], addrV4)
+
+	for {
+		_, _, err := unix.Syscall6(
+			unix.SYS_SENDTO,
+			uintptr(u.sysFd),
+			uintptr(unsafe.Pointer(&b[0])),
+			uintptr(len(b)),
+			uintptr(0),
+			uintptr(unsafe.Pointer(&rsa)),
+			uintptr(unix.SizeofSockaddrInet4),
+		)
+
+		if err != 0 {
+			return &net.OpError{Op: "sendto", Err: err}
+		}
+
+		//TODO: handle incomplete writes
+
+		return nil
+	}
 }
