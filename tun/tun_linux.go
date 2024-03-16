@@ -122,18 +122,38 @@ func (t *tun) Read(p []byte) (n int, err error) {
 }
 
 func (t *tun) Write(p []byte) (n int, err error) {
-	//TODO implement me
-	panic("implement me")
+	var nn int
+	max := len(p)
+
+	for {
+		n, err := unix.Write(t.fd, p[nn:max])
+		if n > 0 {
+			nn += n
+		}
+		if nn == len(p) {
+			return nn, err
+		}
+
+		if err != nil {
+			return nn, err
+		}
+
+		if n == 0 {
+			return nn, io.ErrUnexpectedEOF
+		}
+	}
 }
 
 func (t *tun) Close() error {
-	//TODO implement me
-	panic("implement me")
+	if t.ReadWriteCloser != nil {
+		t.ReadWriteCloser.Close()
+	}
+
+	return nil
 }
 
 func (t *tun) MTU() (int, error) {
-	//TODO implement me
-	panic("implement me")
+	return t.defaultMTU, nil
 }
 
 func (t *tun) Cidr() *net.IPNet {
