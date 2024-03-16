@@ -12,8 +12,6 @@ import (
 	"net"
 )
 
-const MTU = 9001
-
 type GenericConn struct {
 	*net.UDPConn
 	l *logrus.Logger

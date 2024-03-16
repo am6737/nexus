@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/am6737/nexus/api"
-	"github.com/am6737/nexus/ifce"
 	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
@@ -68,13 +67,13 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 		// This should only happen on Darwin-based and FreeBSD hosts, which
 		// routes packets from the Nebula IP to the Nebula IP through the Nebula
 		// TUN device.
-		if ifce.ImmediatelyForwardToSelf {
-			fmt.Println("111")
-			_, err := ic.reader.Write(data)
-			if err != nil {
-				ic.logger.WithError(err).Error("Failed to forward to tun")
-			}
+		//if ifce.ImmediatelyForwardToSelf {
+		fmt.Println("111")
+		_, err := ic.reader.Write(data)
+		if err != nil {
+			ic.logger.WithError(err).Error("Failed to forward to tun")
 		}
+		//}
 		// Otherwise, drop. On linux, we should never see these packets - Linux
 		// routes packets from the nebula IP to the nebula IP through the loopback device.
 		return

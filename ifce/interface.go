@@ -258,7 +258,7 @@ func (itf *Interface) consumeInsidePacket(data []byte, packet *packet.Packet, nb
 		// This should only happen on Darwin-based and FreeBSD hosts, which
 		// routes packets from the Nebula IP to the Nebula IP through the Nebula
 		// TUN device.
-		fmt.Println("immediatelyForwardToSelf => ", ImmediatelyForwardToSelf)
+		//fmt.Println("immediatelyForwardToSelf => ", ImmediatelyForwardToSelf)
 		if ImmediatelyForwardToSelf {
 			fmt.Println("111")
 			_, err := itf.readers[q].Write(data)
@@ -281,11 +281,13 @@ func (itf *Interface) consumeInsidePacket(data []byte, packet *packet.Packet, nb
 		return
 	}
 
-	conn, ok := itf.Conns[packet.RemoteIP]
-	if !ok {
-		itf.logger.WithField("remoteIp", packet.RemoteIP).Warn("Connection not found")
-		return
-	}
+	itf.Writers[q].WriteTo(data, &udp.Addr{IP: host.Remote.IP, Port: host.Remote.Port})
 
-	conn.WriteTo(data, &udp.Addr{IP: host.Remote.IP, Port: host.Remote.Port})
+	//conn, ok := itf.Conns[packet.RemoteIP]
+	//if !ok {
+	//	itf.logger.WithField("remoteIp", packet.RemoteIP).Warn("Connection not found")
+	//	return
+	//}
+
+	//conn.WriteTo(data, &udp.Addr{IP: host.Remote.IP, Port: host.Remote.Port})
 }

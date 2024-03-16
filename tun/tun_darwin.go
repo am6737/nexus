@@ -69,13 +69,13 @@ type ifreqMTU struct {
 	pad  [8]byte
 }
 
-// NewTun creates a new tun instance.
+// newTun creates a new tun instance.
 // It initializes and configures a new tun device with the provided parameters.
 // name is the name of the device.
 // cidr is the network CIDR of the device.
 // defaultMTU is the default Maximum Transmission Unit (MTU) of the device.
 // It returns a Device ifce and an error if any.
-func NewTun(name string, cidr *net.IPNet, mtu int, txQueueLen int, multiqueue bool) (Device, error) {
+func newTun(name string, cidr *net.IPNet, mtu int, txQueueLen int, multiqueue bool) (Device, error) {
 	fmt.Println("cidr => ", cidr)
 	var fd int
 	var err error
