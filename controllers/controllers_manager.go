@@ -40,6 +40,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		localVpnIP: localVpnIP,
 		logger:     outboundLogger.Logger,
 		cfg:        config,
+		inside:     tun,
 		remotes:    make(map[api.VpnIp]*host.HostInfo),
 	}
 

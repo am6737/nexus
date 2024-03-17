@@ -66,6 +66,8 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 		return
 	}
 
+	ic.logger.WithField("packet", packet).WithField("data", data).Info("Received outbound packet")
+
 	if packet.RemoteIP == ic.localVpnIP {
 		// Immediately forward packets from self to self.
 		// This should only happen on Darwin-based and FreeBSD hosts, which

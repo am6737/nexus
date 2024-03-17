@@ -9,6 +9,7 @@ import (
 	"github.com/am6737/nexus/host"
 	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/transport/protocol/udp"
+	"github.com/am6737/nexus/tun"
 	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -21,6 +22,7 @@ var _ interfaces.OutboundController = &OutboundController{}
 // OutboundController 出站控制器 必须实现 interfaces.OutboundController 接口
 type OutboundController struct {
 	outside    udp.Conn
+	inside     tun.Device
 	remotes    map[api.VpnIp]*host.HostInfo
 	localVpnIP api.VpnIp
 	logger     *logrus.Logger
@@ -142,6 +144,7 @@ func parseIP(ipString string) []byte {
 func (oc *OutboundController) Listen(internalWriter io.Writer) {
 	runtime.LockOSThread()
 	oc.outside.ListenOut(func(addr *udp.Addr, out []byte, p []byte) {
+		out = p
 		pk := &packet.Packet{}
 
 		// 解析数据包
@@ -165,8 +168,10 @@ func (oc *OutboundController) Listen(internalWriter io.Writer) {
 		// 如果目标地址是本地VPN地址，将数据写入到本地的tun中
 		if oc.localVpnIP.String() == pk.RemoteIP.String() {
 			//replaceAddresses(p, pk.LocalIP, oc.localVpnIP)
-			fmt.Println("internalWriter out => ", p)
-			if _, err := internalWriter.Write(p); err != nil {
+			//fmt.Println("internalWriter out 1 => ", p)
+			//replaceAddresses(p, pk.RemoteIP, pk.LocalIP)
+			//fmt.Println("internalWriter out 2 => ", p)
+			if _, err := oc.inside.Write(out); err != nil {
 				oc.logger.WithError(err).Error("写入数据出错")
 			}
 			return
