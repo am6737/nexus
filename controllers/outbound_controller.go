@@ -11,6 +11,7 @@ import (
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
+	"io"
 	"net"
 	"runtime"
 )
@@ -135,7 +136,7 @@ func parseIP(ipString string) []byte {
 }
 
 // Listen 监听出站连接，并根据目标地址将数据包转发到相应的目标
-func (oc *OutboundController) Listen(internalWriter func(p []byte) (n int, err error)) {
+func (oc *OutboundController) Listen(internalWriter io.ReadWriteCloser) {
 	runtime.LockOSThread()
 	oc.outside.ListenOut(func(addr *udp.Addr, out []byte, p []byte) {
 		oc.logger.WithField("udpAddr", addr).Info("OutboundController Listen")
@@ -150,9 +151,9 @@ func (oc *OutboundController) Listen(internalWriter func(p []byte) (n int, err e
 
 		// 如果目标地址是本地VPN地址，将数据写入到本地的tun中
 		if oc.localVpnIP.String() == pk.RemoteIP.String() {
-			replaceAddresses(p, pk.LocalIP, oc.localVpnIP)
+			//replaceAddresses(p, pk.LocalIP, oc.localVpnIP)
 			fmt.Println("internalWriter out => ", p)
-			if _, err := internalWriter(p); err != nil {
+			if _, err := internalWriter.Write(p); err != nil {
 				oc.logger.WithError(err).Error("写入数据出错")
 			}
 			return

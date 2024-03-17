@@ -17,7 +17,7 @@ import (
 type ControllersManager struct {
 	logger *logrus.Logger
 
-	internalWriter io.Writer
+	internalWriter io.ReadWriteCloser
 	Inbound        interfaces.InboundController
 	Outbound       interfaces.OutboundController
 }
@@ -45,9 +45,10 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 
 	// Initialize controllers manager
 	controllersManager := &ControllersManager{
-		logger:   logger,
-		Inbound:  inboundController,
-		Outbound: outboundController,
+		logger:         logger,
+		internalWriter: tun,
+		Inbound:        inboundController,
+		Outbound:       outboundController,
 	}
 
 	return controllersManager
@@ -65,10 +66,12 @@ func (c *ControllersManager) Start(ctx context.Context) error {
 	go c.Inbound.Listen(func(out []byte, addr string) error {
 		return c.Outbound.Send(out, addr)
 	})
+	//
+	//go c.Outbound.Listen(func(p []byte) (n int, err error) {
+	//	return c.Inbound.Send(p)
+	//})
 
-	go c.Outbound.Listen(func(p []byte) (n int, err error) {
-		return c.Inbound.Send(p)
-	})
+	go c.Outbound.Listen(c.internalWriter)
 
 	return nil
 }
