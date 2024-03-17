@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/ifce"
@@ -79,6 +80,8 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 		// routes packets from the nebula IP to the nebula IP through the loopback device.
 		return
 	}
+
+	fmt.Println("outbound out => ", data)
 
 	if err := outbound(data, packet.RemoteIP.String()); err != nil {
 		ic.logger.WithError(err).Error("Error while forwarding outbound packet")
