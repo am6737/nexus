@@ -36,6 +36,9 @@ func (oc *OutboundController) Send(out []byte, addr string) error {
 	if !ok {
 		return fmt.Errorf("host %s not found", addr)
 	}
+	oc.logger.WithField("目标地址", addr).
+		WithField("目标远程地址", conn.Remote).
+		Info("出站流量")
 	return oc.outside.WriteTo(out, conn.Remote)
 }
 
@@ -136,11 +139,9 @@ func parseIP(ipString string) []byte {
 }
 
 // Listen 监听出站连接，并根据目标地址将数据包转发到相应的目标
-func (oc *OutboundController) Listen(internalWriter io.ReadWriteCloser) {
+func (oc *OutboundController) Listen(internalWriter io.Writer) {
 	runtime.LockOSThread()
 	oc.outside.ListenOut(func(addr *udp.Addr, out []byte, p []byte) {
-		oc.logger.WithField("udpAddr", addr).Info("OutboundController Listen")
-
 		pk := &packet.Packet{}
 
 		// 解析数据包
@@ -148,6 +149,11 @@ func (oc *OutboundController) Listen(internalWriter io.ReadWriteCloser) {
 			oc.logger.WithError(err).Error("解析数据包出错")
 			return
 		}
+
+		oc.logger.WithField("远程地址", addr).
+			WithField("源地址", pk.LocalIP).
+			WithField("目标地址", pk.RemoteIP).
+			Info("入站流量")
 
 		// 如果目标地址是本地VPN地址，将数据写入到本地的tun中
 		if oc.localVpnIP.String() == pk.RemoteIP.String() {

@@ -17,7 +17,7 @@ import (
 type ControllersManager struct {
 	logger *logrus.Logger
 
-	internalWriter io.ReadWriteCloser
+	internalWriter io.Writer
 	Inbound        interfaces.InboundController
 	Outbound       interfaces.OutboundController
 }
