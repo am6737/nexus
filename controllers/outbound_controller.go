@@ -129,7 +129,7 @@ func (oc *OutboundController) Listen(internalWriter func(p []byte) (n int, err e
 
 		// 如果目标地址是本地VPN地址，将数据写入到本地的tun中
 		if oc.localVpnIP.String() == pk.RemoteIP.String() {
-			if _, err := internalWriter(out); err != nil {
+			if _, err := internalWriter(p); err != nil {
 				oc.logger.WithError(err).Error("写入数据出错")
 			}
 			return
@@ -143,7 +143,7 @@ func (oc *OutboundController) Listen(internalWriter func(p []byte) (n int, err e
 		}
 
 		// 将数据写入远程的连接中
-		if err := oc.outside.WriteTo(out, remoteConn.Remote); err != nil {
+		if err := oc.outside.WriteTo(p, remoteConn.Remote); err != nil {
 			oc.logger.WithError(err).Error("写入数据到远程连接出错")
 			return
 		}
