@@ -28,10 +28,12 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 	// Initialize inbound controller
 	inboundLogger := logger.WithField("controller", "Inbound")
 	inboundController := &InboundController{
+		cfg:        config,
 		mtu:        tun.MTU(),
 		localVpnIP: localVpnIP,
 		inside:     tun,
 		logger:     inboundLogger.Logger,
+		remotes:    make(map[api.VpnIp]*host.HostInfo),
 	}
 
 	// Initialize outbound controller

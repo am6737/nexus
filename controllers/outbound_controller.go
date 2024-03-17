@@ -166,8 +166,8 @@ func (oc *OutboundController) Listen(internalWriter io.Writer) {
 		}
 
 		// 如果目标地址是本地VPN地址，将数据写入到本地的tun中
-		if oc.localVpnIP.String() == pk.RemoteIP.String() {
-			//replaceAddresses(p, pk.LocalIP, oc.localVpnIP)
+		if oc.localVpnIP.String() == pk.LocalIP.String() || oc.localVpnIP.String() == pk.RemoteIP.String() {
+			replaceAddresses(p, pk.LocalIP, oc.localVpnIP)
 			//fmt.Println("internalWriter out 1 => ", p)
 			//replaceAddresses(p, pk.RemoteIP, pk.LocalIP)
 			//fmt.Println("internalWriter out 2 => ", p)
@@ -178,17 +178,34 @@ func (oc *OutboundController) Listen(internalWriter io.Writer) {
 		}
 
 		// 获取目标地址对应的远程连接
-		remoteConn, ok := oc.remotes[pk.RemoteIP]
-		if !ok || remoteConn == nil {
-			oc.logger.Warnf("未找到远程连接或连接为空: %s", pk.RemoteIP)
-			return
+		//remoteConn, ok := oc.remotes[pk.RemoteIP]
+		//if !ok || remoteConn == nil {
+		//	oc.logger.Warnf("未找到远程连接或连接为空: %s", pk.RemoteIP)
+		//	return
+		//}
+
+		for k, v := range oc.remotes {
+			fmt.Println("remotes")
+			fmt.Println(k, v)
+			fmt.Println("remotes")
 		}
 
-		// 将数据写入远程的连接中
-		if err := oc.outside.WriteTo(p, remoteConn.Remote); err != nil {
-			oc.logger.WithError(err).Error("写入数据到远程连接出错")
-			return
+		fmt.Println("------1")
+
+		if host, ok := oc.remotes[pk.LocalIP]; ok {
+			fmt.Println("host.Remote => ", host.Remote)
+			if err := oc.outside.WriteTo(out, host.Remote); err != nil {
+				oc.logger.WithError(err).Error("Failed to write to conn")
+			}
 		}
+
+		fmt.Println("------2")
+
+		// 将数据写入远程的连接中
+		//if err := oc.outside.WriteTo(p, remoteConn.Remote); err != nil {
+		//	oc.logger.WithError(err).Error("写入数据到远程连接出错")
+		//	return
+		//}
 	})
 }
 

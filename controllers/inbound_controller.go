@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
+	"github.com/am6737/nexus/config"
+	"github.com/am6737/nexus/host"
 	"github.com/am6737/nexus/ifce"
 	"github.com/am6737/nexus/transport/packet"
+	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/tun"
 	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
 	"io"
+	"net"
 	"os"
 	"runtime"
 	"sync/atomic"
@@ -23,12 +27,38 @@ var _ interfaces.InboundController = &InboundController{}
 type InboundController struct {
 	mtu        int
 	closed     atomic.Bool
+	remotes    map[api.VpnIp]*host.HostInfo
 	localVpnIP api.VpnIp
+	outside    udp.Conn
 	inside     tun.Device
 	logger     *logrus.Logger
+	cfg        *config.Config
 }
 
 func (ic *InboundController) Start(ctx context.Context) error {
+
+	for k, v := range ic.cfg.StaticHostMap {
+		ip := net.ParseIP(k)
+		if ip == nil {
+			fmt.Println("Invalid IP address")
+			continue
+		}
+		udpAddr, err := net.ResolveUDPAddr("udp", v[0])
+		if err != nil {
+			fmt.Println("Error resolving UDP address:", err)
+			continue
+		}
+		vip := api.Ip2VpnIp(ip)
+		ic.remotes[vip] = &host.HostInfo{
+			Remote: &udp.Addr{
+				IP:   udpAddr.IP,
+				Port: uint16(udpAddr.Port),
+			},
+			Remotes: host.RemoteList{},
+			VpnIp:   vip,
+		}
+	}
+
 	if err := ic.inside.Up(); err != nil {
 		if err := ic.inside.Close(); err != nil {
 			ic.logger.WithError(err).Error("Failed to up tun device")
@@ -85,10 +115,29 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 
 	fmt.Println("outbound out => ", data)
 
-	if err := outbound(data, packet.RemoteIP.String()); err != nil {
-		ic.logger.WithError(err).Error("Error while forwarding outbound packet")
+	host, ok := ic.remotes[packet.RemoteIP]
+	if !ok {
+		ic.logger.WithField("remoteIp", packet.RemoteIP).Warn("Host not found")
 		return
 	}
+	if host.VpnIp != packet.RemoteIP {
+		ic.logger.WithField("remoteIp", packet.RemoteIP).Warn("Host not found")
+		return
+	}
+
+	ic.logger.WithField("remoteIp", host.Remote.IP).
+		WithField("remotePort", host.Remote.Port).
+		WithField("data", data).
+		Info("consume packet forward to udp")
+
+	if err := ic.outside.WriteTo(data, host.Remote); err != nil {
+		ic.logger.WithError(err).Error("Failed to forward to udp")
+	}
+
+	//if err := outbound(data, packet.RemoteIP.String()); err != nil {
+	//	ic.logger.WithError(err).Error("Error while forwarding outbound packet")
+	//	return
+	//}
 }
 
 func (ic *InboundController) Close() error {
