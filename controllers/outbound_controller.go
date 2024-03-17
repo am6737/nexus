@@ -45,49 +45,49 @@ func (oc *OutboundController) Send(out []byte, addr string) error {
 }
 
 func (oc *OutboundController) Start(ctx context.Context) error {
-	var (
-		err           error
-		listenHost    *net.IPAddr
-		rawListenHost = oc.cfg.Listen.Host
-		port          = oc.cfg.Listen.Port
-		routines      = 1
-		batch         = oc.cfg.Listen.Batch
-		conn          udp.Conn
-	)
-
-	if rawListenHost == "[::]" {
-		// Old guidance was to provide the literal `[::]` in `listen.host` but that won't resolve.
-		listenHost = &net.IPAddr{IP: net.IPv6zero}
-
-	} else {
-		listenHost, err = net.ResolveIPAddr("ip", rawListenHost)
-		if err != nil {
-			//return nil, util.ContextualizeIfNeeded("Failed to resolve listen.host", err)
-			return err
-		}
-	}
-
-	oc.logger.Infof("OutboundController listening %q %d", listenHost.IP, port)
-	udpServer, err := udp.NewListener(oc.logger, listenHost.IP, port, routines > 1, batch)
-	if err != nil {
-		//return nil, util.NewContextualError("Failed to open udp listener", m{"queue": i}, err)
-		panic(err)
-	}
-	udpServer.ReloadConfig(oc.cfg)
-	conn = udpServer
-
-	oc.outside = conn
-
-	// If port is dynamic, discover it before the next pass through the for loop
-	// This way all routines will use the same port correctly
-	if port == 0 {
-		uPort, err := udpServer.LocalAddr()
-		if err != nil {
-			//return nil, util.NewContextualError("Failed to get listening port", nil, err)
-			panic(err)
-		}
-		port = int(uPort.Port)
-	}
+	//var (
+	//	err           error
+	//	listenHost    *net.IPAddr
+	//	rawListenHost = oc.cfg.Listen.Host
+	//	port          = oc.cfg.Listen.Port
+	//	routines      = 1
+	//	batch         = oc.cfg.Listen.Batch
+	//	conn          udp.Conn
+	//)
+	//
+	//if rawListenHost == "[::]" {
+	//	// Old guidance was to provide the literal `[::]` in `listen.host` but that won't resolve.
+	//	listenHost = &net.IPAddr{IP: net.IPv6zero}
+	//
+	//} else {
+	//	listenHost, err = net.ResolveIPAddr("ip", rawListenHost)
+	//	if err != nil {
+	//		//return nil, util.ContextualizeIfNeeded("Failed to resolve listen.host", err)
+	//		return err
+	//	}
+	//}
+	//
+	//oc.logger.Infof("OutboundController listening %q %d", listenHost.IP, port)
+	//udpServer, err := udp.NewListener(oc.logger, listenHost.IP, port, routines > 1, batch)
+	//if err != nil {
+	//	//return nil, util.NewContextualError("Failed to open udp listener", m{"queue": i}, err)
+	//	panic(err)
+	//}
+	//udpServer.ReloadConfig(oc.cfg)
+	//conn = udpServer
+	//
+	//oc.outside = conn
+	//
+	//// If port is dynamic, discover it before the next pass through the for loop
+	//// This way all routines will use the same port correctly
+	//if port == 0 {
+	//	uPort, err := udpServer.LocalAddr()
+	//	if err != nil {
+	//		//return nil, util.NewContextualError("Failed to get listening port", nil, err)
+	//		panic(err)
+	//	}
+	//	port = int(uPort.Port)
+	//}
 
 	for k, v := range oc.cfg.StaticHostMap {
 		ip := net.ParseIP(k)

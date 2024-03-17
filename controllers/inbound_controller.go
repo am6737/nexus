@@ -36,7 +36,6 @@ type InboundController struct {
 }
 
 func (ic *InboundController) Start(ctx context.Context) error {
-
 	for k, v := range ic.cfg.StaticHostMap {
 		ip := net.ParseIP(k)
 		if ip == nil {
