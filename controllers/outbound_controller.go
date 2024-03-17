@@ -155,6 +155,13 @@ func (oc *OutboundController) Listen(internalWriter io.Writer) {
 			WithField("目标地址", pk.RemoteIP).
 			Info("入站流量")
 
+		if _, ok := oc.remotes[pk.LocalIP]; !ok {
+			oc.remotes[pk.LocalIP] = &host.HostInfo{
+				Remote: addr,
+				VpnIp:  pk.LocalIP,
+			}
+		}
+
 		// 如果目标地址是本地VPN地址，将数据写入到本地的tun中
 		if oc.localVpnIP.String() == pk.RemoteIP.String() {
 			//replaceAddresses(p, pk.LocalIP, oc.localVpnIP)
