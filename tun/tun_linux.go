@@ -123,7 +123,6 @@ func ioctl(a1, a2, a3 uintptr) error {
 
 func (t *tun) Write(b []byte) (int, error) {
 	var nn int
-	b = b[4:]
 	max := len(b)
 
 	for {
