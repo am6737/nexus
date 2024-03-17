@@ -46,6 +46,11 @@ func (ip VpnIp) ToNetIpAddr() netip.Addr {
 	return netip.AddrFrom4(nip)
 }
 
+func (ip VpnIp) ToNetIP() net.IP {
+	ipStr := fmt.Sprintf("%d.%d.%d.%d", byte(ip>>24), byte(ip>>16), byte(ip>>8), byte(ip))
+	return net.ParseIP(ipStr)
+}
+
 func Ip2VpnIp(ip []byte) VpnIp {
 	if len(ip) == 16 {
 		return VpnIp(binary.BigEndian.Uint32(ip[12:16]))
@@ -59,6 +64,18 @@ func ToNetIpAddr(ip net.IP) (netip.Addr, error) {
 		return netip.Addr{}, fmt.Errorf("invalid net.IP: %v", ip)
 	}
 	return addr, nil
+}
+
+func ParseVpnIp(str string) (VpnIp, error) {
+	ip := net.ParseIP(str)
+	if ip == nil {
+		return 0, fmt.Errorf("invalid IP address: %s", str)
+	}
+	ipBytes := ip.To4()
+	if ipBytes == nil {
+		return 0, fmt.Errorf("invalid IPv4 address: %s", str)
+	}
+	return VpnIp(binary.BigEndian.Uint32(ipBytes)), nil
 }
 
 func ToNetIpPrefix(ipNet net.IPNet) (netip.Prefix, error) {

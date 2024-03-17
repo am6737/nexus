@@ -140,6 +140,7 @@ func (s *StdConn) ListenOut(r EncReader) {
 			} else {
 				udpAddr.IP = names[i][8:24]
 			}
+			fmt.Println("udpAddr => ", udpAddr)
 			udpAddr.Port = binary.BigEndian.Uint16(names[i][2:4])
 			r(udpAddr, plaintext[:0], buffers[i][:msgs[i].Len])
 		}

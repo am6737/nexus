@@ -9,6 +9,7 @@ import (
 	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/tun"
+	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/net/ipv4"
@@ -119,6 +120,29 @@ func (itf *Interface) Run() {
 	}
 }
 
+func parseIP(ipString string) []byte {
+	// 解析 IPv4 地址字符串为 net.IP 类型
+	ip := net.ParseIP(ipString)
+	if ip == nil {
+		fmt.Println("Invalid IP address:", ipString)
+		return nil
+	}
+
+	// 将 net.IP 类型转换为 []byte 切片
+	ipBytes := ip.To4()
+	if ipBytes == nil {
+		fmt.Println("Invalid IPv4 address:", ipString)
+		return nil
+	}
+
+	return []byte(ipBytes)
+}
+
+func replaceAddresses(out []byte, localIP api.VpnIp, remoteIP api.VpnIp) {
+	copy(out[12:16], parseIP(localIP.String()))  // 将本地IP地址替换到目标IP地址的位置
+	copy(out[16:20], parseIP(remoteIP.String())) // 将目标IP地址替换到源IP地址的位置
+}
+
 func (itf *Interface) listenOut(i int) {
 	runtime.LockOSThread()
 
@@ -130,9 +154,40 @@ func (itf *Interface) listenOut(i int) {
 		li = itf.outside
 	}
 
-	li.ListenOut(func(addr *udp.Addr, out []byte, packet []byte) {
+	li.ListenOut(func(addr *udp.Addr, out []byte, p []byte) {
 		itf.logger.WithField("interface", itf.inside.Name()).
-			WithField("udpAddr", addr).Debug("Sending packet to udp")
+			WithField("udpAddr", addr).
+			WithField("out", out).
+			WithField("packet", p).
+			Info("接收到远程数据包")
+
+		out = p
+		pk := &packet.Packet{}
+		if err := utils.ParsePacket(p, false, pk); err != nil {
+			itf.logger.Error(err)
+			return
+		}
+
+		itf.logger.WithField("pkLocalIP", pk.LocalIP).
+			WithField("pkRemoteIP", pk.RemoteIP).
+			WithField("localVpnIP", itf.localVpnIP.String()).
+			WithField("pkLocalPort", pk.LocalPort).
+			Info("Packet info")
+
+		// 判断是否是自己的数据包
+		if pk.LocalIP.String() == itf.localVpnIP.String() {
+			replaceAddresses(out, pk.RemoteIP, itf.localVpnIP)
+			if _, err := itf.readers[i].Write(out); err != nil {
+				itf.logger.WithError(err).Error("Failed to forward to tun")
+			}
+			return
+		}
+
+		if host, ok := itf.Hosts[pk.LocalIP]; ok {
+			if err := itf.Writers[i].WriteTo(out, host.Remote); err != nil {
+				itf.logger.WithError(err).Error("Failed to write to conn")
+			}
+		}
 	})
 }
 
@@ -176,12 +231,6 @@ type PacketInfo struct {
 
 // ParsePacket 函数用于解析数据包并返回解析后的信息
 func ParsePacket(data []byte, incoming bool, p *packet.Packet) error {
-	fmt.Println("data => ", data)
-
-	if len(data) > 4 {
-		data = data[4:]
-	}
-
 	// Do we at least have an ipv4 header worth of data?
 	if len(data) < ipv4.HeaderLen {
 		return fmt.Errorf("packet is less than %v bytes", ipv4.HeaderLen)
@@ -244,14 +293,11 @@ func ParsePacket(data []byte, incoming bool, p *packet.Packet) error {
 
 func (itf *Interface) consumeInsidePacket(data []byte, packet *packet.Packet, nb []byte, out []byte, q int) {
 	if err := ParsePacket(data, false, packet); err != nil {
-		if itf.logger.Level >= logrus.DebugLevel {
-			itf.logger.WithField("packet", packet).Debugf("Error while validating outbound packet: %s", err)
-		}
+		itf.logger.WithField("packet", packet).
+			WithField("data", data).
+			WithError(err).Error("Error while validating outbound packet")
 		return
 	}
-
-	fmt.Println("p RemoteIP => ", packet.RemoteIP)
-	fmt.Println("itf.localVpnIP => ", itf.localVpnIP)
 
 	if packet.RemoteIP == itf.localVpnIP {
 		// Immediately forward packets from self to self.
@@ -260,7 +306,6 @@ func (itf *Interface) consumeInsidePacket(data []byte, packet *packet.Packet, nb
 		// TUN device.
 		//fmt.Println("immediatelyForwardToSelf => ", ImmediatelyForwardToSelf)
 		if ImmediatelyForwardToSelf {
-			fmt.Println("111")
 			_, err := itf.readers[q].Write(data)
 			if err != nil {
 				itf.logger.WithError(err).Error("Failed to forward to tun")
@@ -281,13 +326,12 @@ func (itf *Interface) consumeInsidePacket(data []byte, packet *packet.Packet, nb
 		return
 	}
 
-	itf.Writers[q].WriteTo(data, &udp.Addr{IP: host.Remote.IP, Port: host.Remote.Port})
+	itf.logger.WithField("remoteIp", host.Remote.IP).
+		WithField("remotePort", host.Remote.Port).
+		WithField("data", data).
+		Info("consume packet forward to udp")
 
-	//conn, ok := itf.Conns[packet.RemoteIP]
-	//if !ok {
-	//	itf.logger.WithField("remoteIp", packet.RemoteIP).Warn("Connection not found")
-	//	return
-	//}
-
-	//conn.WriteTo(data, &udp.Addr{IP: host.Remote.IP, Port: host.Remote.Port})
+	if err := itf.Writers[q].WriteTo(data, host.Remote); err != nil {
+		itf.logger.WithError(err).Error("Failed to forward to udp")
+	}
 }

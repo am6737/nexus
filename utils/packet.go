@@ -14,12 +14,6 @@ const (
 
 // ParsePacket 函数用于解析数据包并返回解析后的信息
 func ParsePacket(data []byte, incoming bool, p *packet.Packet) error {
-	fmt.Println("data => ", data)
-
-	if len(data) > 4 {
-		data = data[4:]
-	}
-
 	// Do we at least have an ipv4 header worth of data?
 	if len(data) < ipv4.HeaderLen {
 		return fmt.Errorf("packet is less than %v bytes", ipv4.HeaderLen)

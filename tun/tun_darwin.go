@@ -49,6 +49,9 @@ type tun struct {
 	defaultMTU int
 	ifra       ifreqAddr
 	cidr       *net.IPNet
+
+	// cache out buffer since we need to prepend 4 bytes for tun metadata
+	out []byte
 }
 
 type ifreqAddr struct {
@@ -161,8 +164,8 @@ func newTun(name string, cidr *net.IPNet, mtu int, txQueueLen int, multiqueue bo
 	}, nil
 }
 
-func (t *tun) MTU() (int, error) {
-	return t.defaultMTU, nil
+func (t *tun) MTU() int {
+	return t.defaultMTU
 }
 
 func (t *tun) Cidr() *net.IPNet {
@@ -298,12 +301,43 @@ func (t *tun) Down() error {
 	return nil
 }
 
-func (t *tun) Read(p []byte) (n int, err error) {
-	return t.ReadWriteCloser.Read(p)
+func (t *tun) Read(to []byte) (int, error) {
+
+	buf := make([]byte, len(to)+4)
+
+	n, err := t.ReadWriteCloser.Read(buf)
+
+	copy(to, buf[4:])
+	return n - 4, err
 }
 
-func (t *tun) Write(p []byte) (n int, err error) {
-	return t.ReadWriteCloser.Write(p)
+// Write is only valid for single threaded use
+func (t *tun) Write(from []byte) (int, error) {
+	buf := t.out
+	if cap(buf) < len(from)+4 {
+		buf = make([]byte, len(from)+4)
+		t.out = buf
+	}
+	buf = buf[:len(from)+4]
+
+	if len(from) == 0 {
+		return 0, syscall.EIO
+	}
+
+	// Determine the IP Family for the NULL L2 Header
+	ipVer := from[0] >> 4
+	if ipVer == 4 {
+		buf[3] = syscall.AF_INET
+	} else if ipVer == 6 {
+		buf[3] = syscall.AF_INET6
+	} else {
+		return 0, fmt.Errorf("unable to determine IP version from packet")
+	}
+
+	copy(buf[4:], from)
+
+	n, err := t.ReadWriteCloser.Write(buf)
+	return n - 4, err
 }
 
 func (t *tun) Close() error {

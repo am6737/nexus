@@ -1,42 +1,84 @@
 package controllers
 
 import (
-	"github.com/am6737/nexus/ifce"
+	"github.com/am6737/nexus/api"
+	"github.com/am6737/nexus/api/interfaces"
+	"github.com/am6737/nexus/config"
+	"github.com/am6737/nexus/host"
+	"github.com/am6737/nexus/tun"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
 type ControllersManager struct {
-	ifce   *ifce.Interface
 	logger *logrus.Logger
+
+	internalWriter io.Writer
+	Inbound        interfaces.InboundController
+	Outbound       interfaces.OutboundController
 }
 
-func NewControllersManager(ifce *ifce.Interface, logger *logrus.Logger) *ControllersManager {
-	return &ControllersManager{
-		ifce:   ifce,
-		logger: logger,
+func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun.Device) *ControllersManager {
+	localVpnIP := api.Ip2VpnIp(tun.Cidr().IP)
+
+	// Initialize inbound controller
+	inboundLogger := logger.WithField("controller", "Inbound")
+	inboundController := &InboundController{
+		mtu:        tun.MTU(),
+		localVpnIP: localVpnIP,
+		inside:     tun,
+		logger:     inboundLogger.Logger,
 	}
+
+	// Initialize outbound controller
+	outboundLogger := logger.WithField("controller", "Outbound")
+	outboundController := &OutboundController{
+		localVpnIP: localVpnIP,
+		logger:     outboundLogger.Logger,
+		cfg:        config,
+		remotes:    make(map[api.VpnIp]*host.HostInfo),
+	}
+
+	// Initialize controllers manager
+	controllersManager := &ControllersManager{
+		logger:   logger,
+		Inbound:  inboundController,
+		Outbound: outboundController,
+	}
+
+	return controllersManager
 }
 
-func (c *ControllersManager) Start() {
-	// Activate the interface
-	c.ifce.Up()
+func (c *ControllersManager) Start(ctx context.Context) error {
+	if err := c.Inbound.Start(ctx); err != nil {
+		return err
+	}
 
-	// Start reading packets.
-	c.ifce.Run()
+	if err := c.Outbound.Start(ctx); err != nil {
+		return err
+	}
+
+	go c.Inbound.Listen(func(out []byte, addr string) error {
+		return c.Outbound.Send(out, addr)
+	})
+	go c.Outbound.Listen(func(p []byte) (n int, err error) {
+		return c.Inbound.Send(p)
+	})
+
+	return nil
 }
 
 // Stop signals nebula to shutdown and close all tunnels, returns after the shutdown is complete
 func (c *ControllersManager) Stop() {
-	// Stop the handshakeManager (and other services), to prevent new tunnels from
-	// being created while we're shutting them all down.
-	//c.cancel()
-
-	//c.CloseAllTunnels(false)
-	if err := c.ifce.Close(); err != nil {
-		c.logger.WithError(err).Error("Close interface failed")
+	if err := c.Outbound.Close(); err != nil {
+		c.logger.WithField("error", err).Error("Failed to close outbound controller")
+	}
+	if err := c.Inbound.Close(); err != nil {
+		c.logger.WithField("error", err).Error("Failed to close inbound controller")
 	}
 	c.logger.Info("Goodbye")
 }

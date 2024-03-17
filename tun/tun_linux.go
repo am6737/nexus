@@ -98,39 +98,40 @@ func ioctl(a1, a2, a3 uintptr) error {
 	return nil
 }
 
-func (t *tun) Read(p []byte) (n int, err error) {
+//func (t *tun) Read(p []byte) (n int, err error) {
+//	var nn int
+//	max := len(p)
+//
+//	for {
+//		n, err := unix.Write(t.fd, p[nn:max])
+//		if n > 0 {
+//			nn += n
+//		}
+//		if nn == len(p) {
+//			return nn, err
+//		}
+//
+//		if err != nil {
+//			return nn, err
+//		}
+//
+//		if n == 0 {
+//			return nn, io.ErrUnexpectedEOF
+//		}
+//	}
+//}
+
+func (t *tun) Write(b []byte) (int, error) {
 	var nn int
-	max := len(p)
+	b = b[4:]
+	max := len(b)
 
 	for {
-		n, err := unix.Write(t.fd, p[nn:max])
+		n, err := unix.Write(t.fd, b[nn:max])
 		if n > 0 {
 			nn += n
 		}
-		if nn == len(p) {
-			return nn, err
-		}
-
-		if err != nil {
-			return nn, err
-		}
-
-		if n == 0 {
-			return nn, io.ErrUnexpectedEOF
-		}
-	}
-}
-
-func (t *tun) Write(p []byte) (n int, err error) {
-	var nn int
-	max := len(p)
-
-	for {
-		n, err := unix.Write(t.fd, p[nn:max])
-		if n > 0 {
-			nn += n
-		}
-		if nn == len(p) {
+		if nn == len(b) {
 			return nn, err
 		}
 
@@ -152,8 +153,8 @@ func (t *tun) Close() error {
 	return nil
 }
 
-func (t *tun) MTU() (int, error) {
-	return t.defaultMTU, nil
+func (t *tun) MTU() int {
+	return t.defaultMTU
 }
 
 func (t *tun) Cidr() *net.IPNet {

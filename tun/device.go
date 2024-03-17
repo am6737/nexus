@@ -9,7 +9,7 @@ type Device interface {
 	io.ReadWriteCloser
 
 	// MTU returns the MTU of the Device.
-	MTU() (int, error)
+	MTU() int
 
 	Cidr() *net.IPNet
 
