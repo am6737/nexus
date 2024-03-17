@@ -113,6 +113,27 @@ func (oc *OutboundController) Start(ctx context.Context) error {
 	return nil
 }
 
+func replaceAddresses(out []byte, localIP api.VpnIp, remoteIP api.VpnIp) {
+	copy(out[12:16], parseIP(localIP.String()))  // 将本地IP地址替换到目标IP地址的位置
+	copy(out[16:20], parseIP(remoteIP.String())) // 将目标IP地址替换到源IP地址的位置
+}
+
+func parseIP(ipString string) []byte {
+	// 解析 IPv4 地址字符串为 net.IP 类型
+	ip := net.ParseIP(ipString)
+	if ip == nil {
+		fmt.Println("Invalid IP address:", ipString)
+		return nil
+	}
+	// 将 net.IP 类型转换为 []byte 切片
+	ipBytes := ip.To4()
+	if ipBytes == nil {
+		fmt.Println("Invalid IPv4 address:", ipString)
+		return nil
+	}
+	return ipBytes
+}
+
 // Listen 监听出站连接，并根据目标地址将数据包转发到相应的目标
 func (oc *OutboundController) Listen(internalWriter func(p []byte) (n int, err error)) {
 	runtime.LockOSThread()
@@ -129,6 +150,7 @@ func (oc *OutboundController) Listen(internalWriter func(p []byte) (n int, err e
 
 		// 如果目标地址是本地VPN地址，将数据写入到本地的tun中
 		if oc.localVpnIP.String() == pk.RemoteIP.String() {
+			replaceAddresses(p, pk.RemoteIP, oc.localVpnIP)
 			if _, err := internalWriter(p); err != nil {
 				oc.logger.WithError(err).Error("写入数据出错")
 			}
