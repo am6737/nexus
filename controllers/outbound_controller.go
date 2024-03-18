@@ -9,7 +9,6 @@ import (
 	"github.com/am6737/nexus/host"
 	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/transport/protocol/udp"
-	"github.com/am6737/nexus/tun"
 	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -21,12 +20,12 @@ var _ interfaces.OutboundController = &OutboundController{}
 
 // OutboundController 出站控制器 必须实现 interfaces.OutboundController 接口
 type OutboundController struct {
-	outside    udp.Conn
-	inside     tun.Device
-	remotes    map[api.VpnIp]*host.HostInfo
-	localVpnIP api.VpnIp
-	logger     *logrus.Logger
-	cfg        *config.Config
+	outside     udp.Conn
+	remotes     map[api.VpnIp]*host.HostInfo
+	lighthouses []*host.HostInfo
+	localVpnIP  api.VpnIp
+	logger      *logrus.Logger
+	cfg         *config.Config
 }
 
 func (oc *OutboundController) Send(out []byte, addr string) error {
@@ -36,7 +35,17 @@ func (oc *OutboundController) Send(out []byte, addr string) error {
 	}
 	conn, ok := oc.remotes[ip]
 	if !ok {
+		for _, lighthouse := range oc.lighthouses {
+			if lighthouse != nil {
+				oc.logger.WithField("目标地址", addr).
+					WithField("灯塔地址", lighthouse.Remote).
+					Info("出站流量转发到灯塔")
+				return oc.outside.WriteTo(out, lighthouse.Remote)
+			}
+		}
+
 		return fmt.Errorf("host %s not found", addr)
+
 	}
 	oc.logger.WithField("目标地址", addr).
 		WithField("目标远程地址", conn.Remote).
@@ -45,49 +54,49 @@ func (oc *OutboundController) Send(out []byte, addr string) error {
 }
 
 func (oc *OutboundController) Start(ctx context.Context) error {
-	//var (
-	//	err           error
-	//	listenHost    *net.IPAddr
-	//	rawListenHost = oc.cfg.Listen.Host
-	//	port          = oc.cfg.Listen.Port
-	//	routines      = 1
-	//	batch         = oc.cfg.Listen.Batch
-	//	conn          udp.Conn
-	//)
-	//
-	//if rawListenHost == "[::]" {
-	//	// Old guidance was to provide the literal `[::]` in `listen.host` but that won't resolve.
-	//	listenHost = &net.IPAddr{IP: net.IPv6zero}
-	//
-	//} else {
-	//	listenHost, err = net.ResolveIPAddr("ip", rawListenHost)
-	//	if err != nil {
-	//		//return nil, util.ContextualizeIfNeeded("Failed to resolve listen.host", err)
-	//		return err
-	//	}
-	//}
-	//
-	//oc.logger.Infof("OutboundController listening %q %d", listenHost.IP, port)
-	//udpServer, err := udp.NewListener(oc.logger, listenHost.IP, port, routines > 1, batch)
-	//if err != nil {
-	//	//return nil, util.NewContextualError("Failed to open udp listener", m{"queue": i}, err)
-	//	panic(err)
-	//}
-	//udpServer.ReloadConfig(oc.cfg)
-	//conn = udpServer
-	//
-	//oc.outside = conn
-	//
-	//// If port is dynamic, discover it before the next pass through the for loop
-	//// This way all routines will use the same port correctly
-	//if port == 0 {
-	//	uPort, err := udpServer.LocalAddr()
-	//	if err != nil {
-	//		//return nil, util.NewContextualError("Failed to get listening port", nil, err)
-	//		panic(err)
-	//	}
-	//	port = int(uPort.Port)
-	//}
+	var (
+		err           error
+		listenHost    *net.IPAddr
+		rawListenHost = oc.cfg.Listen.Host
+		port          = oc.cfg.Listen.Port
+		routines      = 1
+		batch         = oc.cfg.Listen.Batch
+		conn          udp.Conn
+	)
+
+	if rawListenHost == "[::]" {
+		// Old guidance was to provide the literal `[::]` in `listen.host` but that won't resolve.
+		listenHost = &net.IPAddr{IP: net.IPv6zero}
+
+	} else {
+		listenHost, err = net.ResolveIPAddr("ip", rawListenHost)
+		if err != nil {
+			//return nil, util.ContextualizeIfNeeded("Failed to resolve listen.host", err)
+			return err
+		}
+	}
+
+	oc.logger.Infof("OutboundController listening %q %d", listenHost.IP, port)
+	udpServer, err := udp.NewListener(oc.logger, listenHost.IP, port, routines > 1, batch)
+	if err != nil {
+		//return nil, util.NewContextualError("Failed to open udp listener", m{"queue": i}, err)
+		panic(err)
+	}
+	udpServer.ReloadConfig(oc.cfg)
+	conn = udpServer
+
+	oc.outside = conn
+
+	// If port is dynamic, discover it before the next pass through the for loop
+	// This way all routines will use the same port correctly
+	if port == 0 {
+		uPort, err := udpServer.LocalAddr()
+		if err != nil {
+			//return nil, util.NewContextualError("Failed to get listening port", nil, err)
+			panic(err)
+		}
+		port = int(uPort.Port)
+	}
 
 	for k, v := range oc.cfg.StaticHostMap {
 		ip := net.ParseIP(k)
@@ -108,6 +117,21 @@ func (oc *OutboundController) Start(ctx context.Context) error {
 			},
 			Remotes: host.RemoteList{},
 			VpnIp:   vip,
+		}
+	}
+
+	var lighthouses []*host.HostInfo
+
+	for _, ip := range oc.cfg.Lighthouse.Hosts {
+		vpnIp, err := api.ParseVpnIp(ip)
+		if err != nil {
+			oc.logger.WithError(err).Error("解析VPN地址失败")
+			continue
+		}
+		if host, ok := oc.remotes[vpnIp]; ok {
+			lighthouses = append(lighthouses, host)
+		} else {
+			oc.logger.WithField("lighthouse", vpnIp).Error("灯塔未配置静态地址映射")
 		}
 	}
 
@@ -167,22 +191,13 @@ func (oc *OutboundController) Listen(internalWriter io.Writer) {
 
 		// 如果目标地址是本地VPN地址，将数据写入到本地的tun中
 		if oc.localVpnIP.String() == pk.LocalIP.String() || oc.localVpnIP.String() == pk.RemoteIP.String() {
-			replaceAddresses(p, pk.LocalIP, oc.localVpnIP)
-			//fmt.Println("internalWriter out 1 => ", p)
-			//replaceAddresses(p, pk.RemoteIP, pk.LocalIP)
-			//fmt.Println("internalWriter out 2 => ", p)
-			if _, err := oc.inside.Write(out); err != nil {
+			//replaceAddresses(p, pk.LocalIP, oc.localVpnIP)
+			replaceAddresses(out, pk.RemoteIP, pk.LocalIP)
+			if _, err := internalWriter.Write(out); err != nil {
 				oc.logger.WithError(err).Error("写入数据出错")
 			}
 			return
 		}
-
-		// 获取目标地址对应的远程连接
-		//remoteConn, ok := oc.remotes[pk.RemoteIP]
-		//if !ok || remoteConn == nil {
-		//	oc.logger.Warnf("未找到远程连接或连接为空: %s", pk.RemoteIP)
-		//	return
-		//}
 
 		for k, v := range oc.remotes {
 			fmt.Println("remotes")
@@ -197,15 +212,24 @@ func (oc *OutboundController) Listen(internalWriter io.Writer) {
 			if err := oc.outside.WriteTo(out, host.Remote); err != nil {
 				oc.logger.WithError(err).Error("Failed to write to conn")
 			}
+			return
 		}
 
 		fmt.Println("------2")
 
-		// 将数据写入远程的连接中
-		//if err := oc.outside.WriteTo(p, remoteConn.Remote); err != nil {
-		//	oc.logger.WithError(err).Error("写入数据到远程连接出错")
-		//	return
-		//}
+		for _, lighthouse := range oc.lighthouses {
+			if lighthouse != nil {
+				oc.logger.WithField("目标地址", addr).
+					WithField("灯塔地址", lighthouse.Remote).
+					Info("出站流量转发到灯塔")
+
+				// 如果本地没有远程连接，将数据包转发到灯塔
+				if err := oc.outside.WriteTo(p, lighthouse.Remote); err != nil {
+					oc.logger.WithError(err).Error("数据转发到灯塔出错")
+				}
+				//return oc.outside.WriteTo(out, lighthouse.Remote)
+			}
+		}
 	})
 }
 

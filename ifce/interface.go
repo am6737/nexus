@@ -176,18 +176,18 @@ func (itf *Interface) listenOut(i int) {
 
 		// 判断是否是自己的数据包
 		if pk.LocalIP.String() == itf.localVpnIP.String() {
-			replaceAddresses(out, pk.RemoteIP, itf.localVpnIP)
+			replaceAddresses(out, pk.RemoteIP, pk.LocalIP)
 			if _, err := itf.readers[i].Write(out); err != nil {
 				itf.logger.WithError(err).Error("Failed to forward to tun")
 			}
 			return
 		}
 
-		if host, ok := itf.Hosts[pk.LocalIP]; ok {
-			if err := itf.Writers[i].WriteTo(out, host.Remote); err != nil {
-				itf.logger.WithError(err).Error("Failed to write to conn")
-			}
+		//if host, ok := itf.Hosts[pk.LocalIP]; ok {
+		if err := itf.Writers[i].WriteTo(out, addr); err != nil {
+			itf.logger.WithError(err).Error("Failed to write to conn")
 		}
+		//}
 	})
 }
 

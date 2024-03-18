@@ -29,10 +29,10 @@ type InboundController struct {
 	closed     atomic.Bool
 	remotes    map[api.VpnIp]*host.HostInfo
 	localVpnIP api.VpnIp
-	outside    udp.Conn
-	inside     tun.Device
-	logger     *logrus.Logger
-	cfg        *config.Config
+	//outside    udp.Conn
+	inside tun.Device
+	logger *logrus.Logger
+	cfg    *config.Config
 }
 
 func (ic *InboundController) Start(ctx context.Context) error {
@@ -129,14 +129,14 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 		WithField("data", data).
 		Info("consume packet forward to udp")
 
-	if err := ic.outside.WriteTo(data, host.Remote); err != nil {
-		ic.logger.WithError(err).Error("Failed to forward to udp")
-	}
-
-	//if err := outbound(data, packet.RemoteIP.String()); err != nil {
-	//	ic.logger.WithError(err).Error("Error while forwarding outbound packet")
-	//	return
+	//if err := ic.outside.WriteTo(data, host.Remote); err != nil {
+	//	ic.logger.WithError(err).Error("Failed to forward to udp")
 	//}
+
+	if err := outbound(data, packet.RemoteIP.String()); err != nil {
+		ic.logger.WithError(err).Error("Error while forwarding outbound packet")
+		return
+	}
 }
 
 func (ic *InboundController) Close() error {

@@ -18,7 +18,6 @@ type Runnable interface {
 // OutboundController 出站控制器接口
 type OutboundController interface {
 	Runnable
-	//Listen(internalWriter func(p []byte) (n int, err error))
 	Listen(internalWriter io.Writer)
 	Send(out []byte, addr string) error
 	Close() error
