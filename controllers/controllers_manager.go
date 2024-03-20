@@ -73,6 +73,9 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 	}
 
 	handshakeController := &HandshakeController{
+		sendFunc: func(out []byte, addr *udp.Addr) error {
+			return outboundController.SendToRemote(out, addr)
+		},
 		mtu:            tun.MTU(),
 		lighthouses:    lighthouses,
 		hosts:          make(map[api.VpnIp]*host.HostInfo),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/host"
+	"github.com/am6737/nexus/transport/protocol/udp"
 	"io"
 )
 
@@ -22,6 +23,7 @@ type OutboundController interface {
 	Runnable
 	Listen(internalWriter io.Writer)
 	Send(out []byte, addr string) error
+	SendToRemote(out []byte, addr *udp.Addr) error
 	Close() error
 }
 

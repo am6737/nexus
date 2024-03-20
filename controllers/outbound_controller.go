@@ -28,6 +28,11 @@ type OutboundController struct {
 	cfg         *config.Config
 }
 
+func (oc *OutboundController) SendToRemote(out []byte, addr *udp.Addr) error {
+	oc.logger.WithField("addr", addr).Info("出站流量 SendToRemote")
+	return oc.outside.WriteTo(out, addr)
+}
+
 func (oc *OutboundController) Send(out []byte, addr string) error {
 	ip, err := api.ParseVpnIp(addr)
 	if err != nil {

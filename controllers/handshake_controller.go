@@ -25,6 +25,8 @@ type HandshakeController struct {
 
 	outside udp.Conn
 
+	sendFunc func(out []byte, addr *udp.Addr) error
+
 	// handshakeQueue 用于存储需要进行握手的地址
 	handshakeQueue chan udp.Addr
 
@@ -98,7 +100,7 @@ func (hc *HandshakeController) performHandshake(addr udp.Addr) {
 	copy(out, hh)
 
 	// 将数据包写入到连接中
-	err = hc.outside.WriteTo(out, &addr)
+	err = hc.sendFunc(out, &addr)
 	if err != nil {
 		hc.logger.WithError(err).WithField("addr", addr).Error("failed to write handshake packet")
 		return
