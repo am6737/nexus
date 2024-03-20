@@ -2,6 +2,8 @@ package interfaces
 
 import (
 	"context"
+	"github.com/am6737/nexus/api"
+	"github.com/am6737/nexus/host"
 	"io"
 )
 
@@ -33,5 +35,15 @@ type InboundController interface {
 
 // HandshakeController 握手控制器接口
 type HandshakeController interface {
-	Handshake() error
+	Runnable
+	Handshake(vpnIp api.VpnIp) error
+}
+
+// LighthouseController 灯塔控制器接口
+type LighthouseController interface {
+	Runnable
+	// Query 查询指定VPN IP地址的节点信息
+	Query(vpnIP api.VpnIp) (*host.HostInfo, error)
+	// Store 存储节点信息
+	Store(info *host.HostInfo) error
 }

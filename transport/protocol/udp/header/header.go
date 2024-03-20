@@ -39,6 +39,25 @@ type Header struct {
 	MessageCounter uint64
 }
 
+func BuildHandshakePacket(remoteIndex uint32, messageCounter uint64) ([]byte, error) {
+	header := &Header{
+		Version:        Version,
+		MessageType:    Handshake,
+		MessageSubtype: 0,
+		Reserved:       0,
+		RemoteIndex:    remoteIndex,
+		MessageCounter: messageCounter,
+	}
+
+	packet := make([]byte, Len)
+	encodedHeader, err := header.Encode(packet)
+	if err != nil {
+		return nil, err
+	}
+
+	return encodedHeader, nil
+}
+
 // Encode 函数将提供的头部值编码到提供的字节数组中。
 // 字节数组的长度必须大于等于 HeaderLen，否则会引发 panic。
 func Encode(b []byte, v uint8, mt MessageType, mst MessageSubType, ri uint32, mc uint64) []byte {

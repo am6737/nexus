@@ -4,9 +4,19 @@ import (
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/flynn/noise"
+	"github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
 )
+
+type HostMap struct {
+	sync.RWMutex  //Because we concurrently read and write to our maps
+	Indexes       map[uint32]*HostInfo
+	Relays        map[uint32]*HostInfo // Maps a Relay IDX to a Relay HostInfo object
+	RemoteIndexes map[uint32]*HostInfo
+	Hosts         map[api.VpnIp]*HostInfo
+	logger        *logrus.Logger
+}
 
 type HostInfo struct {
 	Remote  *udp.Addr

@@ -1,14 +1,17 @@
 package controllers
 
 import (
+	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
 	"github.com/am6737/nexus/host"
+	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/tun"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"io"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,9 +20,12 @@ import (
 type ControllersManager struct {
 	logger *logrus.Logger
 
+	hostMap        *host.HostMap
 	internalWriter io.Writer
-	Inbound        interfaces.InboundController
-	Outbound       interfaces.OutboundController
+
+	Handshake interfaces.HandshakeController
+	Inbound   interfaces.InboundController
+	Outbound  interfaces.OutboundController
 }
 
 func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun.Device) *ControllersManager {
@@ -33,7 +39,6 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		localVpnIP: localVpnIP,
 		inside:     tun,
 		logger:     inboundLogger.Logger,
-		remotes:    make(map[api.VpnIp]*host.HostInfo),
 	}
 
 	// Initialize outbound controller
@@ -45,10 +50,41 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		remotes:    make(map[api.VpnIp]*host.HostInfo),
 	}
 
+	var lighthouses map[api.VpnIp]*host.HostInfo
+	for _, ip := range config.Lighthouse.Hosts {
+		if addr, ok := config.StaticHostMap[ip]; ok {
+			udpAddr, err := net.ResolveUDPAddr("udp", addr[0])
+			if err != nil {
+				fmt.Println("解析地址出错：", err)
+				continue
+			}
+			vpnIp, err := api.ParseVpnIp(ip)
+			if err != nil {
+				fmt.Println("解析地址出错：", err)
+				continue
+			}
+			lighthouses[vpnIp] = &host.HostInfo{
+				Remote: &udp.Addr{
+					IP:   udpAddr.IP,
+					Port: uint16(udpAddr.Port),
+				},
+			}
+		}
+	}
+
+	handshakeController := &HandshakeController{
+		mtu:            tun.MTU(),
+		lighthouses:    lighthouses,
+		hosts:          make(map[api.VpnIp]*host.HostInfo),
+		handshakeQueue: make(chan udp.Addr),
+		logger:         logger.WithField("controller", "Handshake").Logger,
+	}
+
 	// Initialize controllers manager
 	controllersManager := &ControllersManager{
 		logger:         logger,
 		internalWriter: tun,
+		Handshake:      handshakeController,
 		Inbound:        inboundController,
 		Outbound:       outboundController,
 	}
@@ -65,13 +101,13 @@ func (c *ControllersManager) Start(ctx context.Context) error {
 		return err
 	}
 
+	if err := c.Handshake.Start(ctx); err != nil {
+		return err
+	}
+
 	go c.Inbound.Listen(func(out []byte, addr string) error {
 		return c.Outbound.Send(out, addr)
 	})
-	//
-	//go c.Outbound.Listen(func(p []byte) (n int, err error) {
-	//	return c.Inbound.Send(p)
-	//})
 
 	go c.Outbound.Listen(c.internalWriter)
 
