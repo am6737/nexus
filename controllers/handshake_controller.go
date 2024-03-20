@@ -2,13 +2,13 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/host"
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/transport/protocol/udp/header"
 	"github.com/sirupsen/logrus"
-	"net"
 	"time"
 )
 
@@ -22,6 +22,8 @@ type HandshakeController struct {
 	lighthouses map[api.VpnIp]*host.HostInfo
 
 	hosts map[api.VpnIp]*host.HostInfo
+
+	outside udp.Conn
 
 	// handshakeQueue 用于存储需要进行握手的地址
 	handshakeQueue chan udp.Addr
@@ -54,6 +56,7 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
+			hc.startHandshakeWork()
 			//for host, _ := range hc.hosts {
 			//	hc.trigger <- host
 			//}
@@ -72,16 +75,16 @@ func (hc *HandshakeController) startHandshakeWork() {
 }
 
 func (hc *HandshakeController) performHandshake(addr udp.Addr) {
-	netAddr := &net.UDPAddr{
-		IP:   addr.IP,
-		Port: int(addr.Port),
-	}
-	conn, err := net.DialUDP("udp", nil, netAddr)
-	if err != nil {
-		hc.logger.WithError(err).WithField("addr", addr).Error("failed to dial lighthouse")
-		return
-	}
-	defer conn.Close()
+	//netAddr := &net.UDPAddr{
+	//	IP:   addr.IP,
+	//	Port: int(addr.Port),
+	//}
+	//conn, err := net.DialUDP("udp", nil, netAddr)
+	//if err != nil {
+	//	hc.logger.WithError(err).WithField("addr", addr).Error("failed to dial lighthouse")
+	//	return
+	//}
+	//defer conn.Close()
 
 	// 构建握手数据包
 	hh, err := header.BuildHandshakePacket(0, 1)
@@ -95,13 +98,13 @@ func (hc *HandshakeController) performHandshake(addr udp.Addr) {
 	copy(out, hh)
 
 	// 将数据包写入到连接中
-	_, err = conn.WriteTo(out, netAddr)
+	err = hc.outside.WriteTo(out, &addr)
 	if err != nil {
 		hc.logger.WithError(err).WithField("addr", addr).Error("failed to write handshake packet")
 		return
 	}
 
-	hc.logger.WithField("conn", conn.RemoteAddr()).WithField("packet", out).Info("handshake lighthouse")
+	hc.logger.WithField("addr", addr).WithField("packet", out).Info("handshake lighthouse")
 }
 
 // Handshake 执行给定 vpnIp 的握手
@@ -110,23 +113,33 @@ func (hc *HandshakeController) Handshake(vpnIp api.VpnIp) error {
 }
 
 func (hc *HandshakeController) startLighthouseHandshake() {
-	// 对灯塔进行握手
-	for vpnIp, lighthouse := range hc.lighthouses {
-		conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
+	for _, lighthouse := range hc.lighthouses {
+		fmt.Println("lighthouse.Remote.IP => ", lighthouse.Remote.IP)
+		fmt.Println("lighthouse.Remote.IP => ", lighthouse.Remote.Port)
+		hc.handshakeQueue <- udp.Addr{
 			IP:   lighthouse.Remote.IP,
-			Port: int(lighthouse.Remote.Port),
-		})
-		if err != nil {
-			hc.logger.WithError(err).WithField("lighthouse addr", lighthouse.Remote.String()).Error("failed to dial lighthouse")
-			return
+			Port: lighthouse.Remote.Port,
 		}
-		defer conn.Close()
-
-		hc.hosts[vpnIp] = &host.HostInfo{
-			Remote: lighthouse.Remote,
-			VpnIp:  vpnIp,
-		}
-
-		hc.logger.WithField("conn", conn.RemoteAddr()).Info("handshake lighthouse")
+		//conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
+		//	IP:   lighthouse.Remote.IP,
+		//	Port: int(lighthouse.Remote.Port),
+		//})
+		//fmt.Println("3333")
+		//
+		//if err != nil {
+		//	hc.logger.WithError(err).WithField("lighthouse addr", lighthouse.Remote.String()).Error("failed to dial lighthouse")
+		//	continue
+		//}
+		//defer conn.Close()
+		//
+		//fmt.Println("111")
+		//
+		//hc.hosts[vpnIp] = &host.HostInfo{
+		//	Remote: lighthouse.Remote,
+		//	VpnIp:  vpnIp,
+		//}
+		//fmt.Println("2222")
+		//
+		//hc.logger.WithField("conn", conn.RemoteAddr()).Info("handshake lighthouse")
 	}
 }

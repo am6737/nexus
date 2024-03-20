@@ -50,7 +50,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		remotes:    make(map[api.VpnIp]*host.HostInfo),
 	}
 
-	var lighthouses map[api.VpnIp]*host.HostInfo
+	lighthouses := map[api.VpnIp]*host.HostInfo{}
 	for _, ip := range config.Lighthouse.Hosts {
 		if addr, ok := config.StaticHostMap[ip]; ok {
 			udpAddr, err := net.ResolveUDPAddr("udp", addr[0])
