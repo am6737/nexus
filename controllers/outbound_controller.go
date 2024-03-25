@@ -67,6 +67,7 @@ func (oc *OutboundController) Start(ctx context.Context) error {
 
 	// 设置 UDP 服务器
 	udpServer, err := udp.NewListener(oc.logger, listenHost.IP, oc.cfg.Listen.Port, oc.cfg.Listen.Routines > 1, oc.cfg.Listen.Batch)
+	//udpServer, err := udp.NewGenericListener(oc.logger, listenHost.IP, oc.cfg.Listen.Port, oc.cfg.Listen.Routines > 1, oc.cfg.Listen.Batch)
 	if err != nil {
 		return err
 	}
@@ -168,6 +169,8 @@ func parseIP(ipString string) []byte {
 
 func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, internalWriter io.Writer) {
 	pk := &packet.Packet{}
+
+	fmt.Println("OutboundController handlePacket")
 
 	// 解析数据包
 	if err := utils.ParsePacket(p, false, pk); err != nil {

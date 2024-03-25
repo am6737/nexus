@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
@@ -66,6 +67,9 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 		ic.logger.WithField("packet", packet).Debugf("Error while validating outbound packet: %s", err)
 		return
 	}
+
+	fmt.Println("data => ", data)
+	fmt.Println("len(data) => ", len(data))
 
 	if packet.RemoteIP == ic.localVpnIP {
 		// Immediately forward packets from self to self.

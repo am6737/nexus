@@ -6,6 +6,9 @@ import (
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/host"
+	"github.com/am6737/nexus/transport/packet"
+	"golang.org/x/net/ipv4"
+	//pkudp "github.com/am6737/nexus/transport/packet/udp"
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/transport/protocol/udp/header"
 	"github.com/sirupsen/logrus"
@@ -24,6 +27,8 @@ type HandshakeController struct {
 	hosts map[api.VpnIp]*host.HostInfo
 
 	outside udp.Conn
+
+	localVpnIP api.VpnIp
 
 	sendFunc func(out []byte, addr *udp.Addr) error
 
@@ -49,21 +54,22 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 	//go hc.startHandshakeWork()
 	go hc.startLighthouseHandshake()
 
-	// 启动定时器，每秒进行一次握手
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-			hc.startHandshakeWork()
-			//for host, _ := range hc.hosts {
-			//	hc.trigger <- host
-			//}
+	go func() {
+		// 启动定时器，每秒进行一次握手
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+			case <-ticker.C:
+				hc.startHandshakeWork()
+				//for host, _ := range hc.hosts {
+				//	hc.trigger <- host
+				//}
+			}
 		}
-	}
+	}()
+	return nil
 }
 
 // startHandshakeWork 处理给定地址的握手
@@ -95,9 +101,27 @@ func (hc *HandshakeController) performHandshake(addr udp.Addr) {
 		return
 	}
 
+	h := ipv4.Header{
+		Version:  1,
+		Len:      20,
+		Src:      hc.localVpnIP.ToIP(),
+		Dst:      addr.IP,
+		Options:  []byte{0, 1, 0, 2},
+		Protocol: packet.ProtoUDP,
+	}
+	b, _ := h.Marshal()
+	b = append(b, hh...)
+	//todo
+	//封装数据包
+	//data, err := pkudp.Packet{}.Serialize()
+	//if err != nil {
+	//	hc.logger.WithError(err).WithField("addr", addr).Error("failed to serialize packet")
+	//	return
+	//}
+
 	out := make([]byte, hc.mtu)
 	// 将握手数据包写入输出缓冲区
-	copy(out, hh)
+	copy(out, b)
 
 	// 将数据包写入到连接中
 	err = hc.sendFunc(out, &addr)
@@ -106,7 +130,7 @@ func (hc *HandshakeController) performHandshake(addr udp.Addr) {
 		return
 	}
 
-	hc.logger.WithField("addr", addr).WithField("packet", out).Info("handshake lighthouse")
+	hc.logger.WithField("addr", addr).WithField("packet header", hh).Info("handshake lighthouse")
 }
 
 // Handshake 执行给定 vpnIp 的握手
@@ -115,13 +139,31 @@ func (hc *HandshakeController) Handshake(vpnIp api.VpnIp) error {
 }
 
 func (hc *HandshakeController) startLighthouseHandshake() {
-	for _, lighthouse := range hc.lighthouses {
-		fmt.Println("lighthouse.Remote.IP => ", lighthouse.Remote.IP)
-		fmt.Println("lighthouse.Remote.IP => ", lighthouse.Remote.Port)
-		hc.handshakeQueue <- udp.Addr{
-			IP:   lighthouse.Remote.IP,
-			Port: lighthouse.Remote.Port,
+
+	// 启动定时器，每秒进行一次握手
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			for _, lighthouse := range hc.lighthouses {
+				fmt.Println("lighthouse.Remote.IP => ", lighthouse.Remote.IP)
+				fmt.Println("lighthouse.Remote.IP => ", lighthouse.Remote.Port)
+				hc.handshakeQueue <- udp.Addr{
+					IP:   lighthouse.Remote.IP,
+					Port: lighthouse.Remote.Port,
+				}
+			}
 		}
+
+		//for _, lighthouse := range hc.lighthouses {
+		//fmt.Println("lighthouse.Remote.IP => ", lighthouse.Remote.IP)
+		//fmt.Println("lighthouse.Remote.IP => ", lighthouse.Remote.Port)
+		//hc.handshakeQueue <- udp.Addr{
+		//	IP:   lighthouse.Remote.IP,
+		//	Port: lighthouse.Remote.Port,
+		//}
 		//conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
 		//	IP:   lighthouse.Remote.IP,
 		//	Port: int(lighthouse.Remote.Port),

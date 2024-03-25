@@ -132,6 +132,7 @@ func (s *StdConn) ListenOut(r EncReader) {
 			s.l.WithError(err).Debug("udp socket is closed, exiting read loop")
 			return
 		}
+		fmt.Println("ListenOut => ", n)
 
 		//metric.Update(int64(n))
 		for i := 0; i < n; i++ {
