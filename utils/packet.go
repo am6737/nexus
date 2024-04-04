@@ -13,6 +13,7 @@ const (
 )
 
 // ParsePacket 函数用于解析数据包并返回解析后的信息
+// incoming true 时表示数据包是从conn流入tun，false 表示数据包从tun流出
 func ParsePacket(data []byte, incoming bool, p *packet.Packet) error {
 	// Do we at least have an ipv4 header worth of data?
 	if len(data) < ipv4.HeaderLen {

@@ -59,13 +59,12 @@ func (oc *OutboundController) Send(out []byte, addr string) error {
 	}
 
 	// 创建新的数据包，先是messagePacket，后是out
-	combinedPacket := append(messagePacket, out...)
+	out = append(messagePacket, out...)
 
 	oc.logger.WithField("目标地址", addr).
 		WithField("目标远程地址", conn.Remote).
-		WithField("数据包", combinedPacket).
+		WithField("数据包", out).
 		Info("出站流量")
-
 	return oc.outside.WriteTo(out, conn.Remote)
 }
 
@@ -187,15 +186,9 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		return
 	}
 
-	switch h.MessageType {
-	case header.Handshake:
-		fmt.Println("OutboundController handlePacket Handshake")
-	case header.Message:
-		fmt.Println("OutboundController handlePacket Message")
-	}
-
 	// 解析数据包
-	if err := utils.ParsePacket(p, true, pk); err != nil {
+	err = utils.ParsePacket(p[header.Len:], false, pk)
+	if err != nil {
 		oc.logger.WithError(err).Error("解析数据包出错")
 		return
 	}
@@ -205,30 +198,42 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		WithField("目标地址", pk.RemoteIP).
 		WithField("数据包", pk).
 		WithField("原始数据", p).
-		Info("入站流量")
+		Info("ParsePacket true 入站流量")
+
+	switch h.MessageType {
+	case header.Handshake:
+		fmt.Println("OutboundController handlePacket Handshake")
+	case header.Message:
+		out := p
+		h1 := p[:header.Len]
+		p = p[header.Len:]
+
+		// 本地网卡访问本地地址
+		if oc.localVpnIP.String() == pk.LocalIP.String() {
+			replaceAddresses(p, pk.RemoteIP, pk.LocalIP)
+			oc.handleLocalVpnAddress(p, pk, internalWriter)
+			return
+		}
+
+		// 远程访问本地地址，需要写入网卡且回应给远程
+		if oc.localVpnIP.String() == pk.RemoteIP.String() {
+			if _, err := internalWriter.Write(p); err != nil {
+				oc.logger.WithError(err).Error("写入数据出错")
+			}
+			replaceAddresses(p, pk.LocalIP, pk.RemoteIP)
+			out = append(h1, p...)
+			if err := oc.outside.WriteTo(out, addr); err != nil {
+				oc.logger.WithError(err).WithField("addr", addr).Error("数据转发到远程")
+			}
+			return
+		}
+	}
 
 	// 更新 remotes 映射表
 	oc.updateRemotes(pk, addr)
 
-	// 本地网卡访问本地地址
-	if oc.localVpnIP.String() == pk.LocalIP.String() {
-		oc.handleLocalVpnAddress(p, pk, internalWriter)
-		return
-	}
-
-	// 远程访问本地地址，需要写入网卡且回应给远程
-	if oc.localVpnIP.String() == pk.RemoteIP.String() {
-		if _, err := internalWriter.Write(p); err != nil {
-			oc.logger.WithError(err).Error("写入数据出错")
-		}
-		if err := oc.outside.WriteTo(p, addr); err != nil {
-			oc.logger.WithError(err).WithField("addr", addr).Error("数据转发到远程")
-		}
-		return
-	}
-
 	// 处理目标地址是灯塔的情况
-	oc.handleLighthouses(p, addr)
+	//oc.handleLighthouses(p, addr)
 }
 
 // 更新 remotes 映射表
@@ -243,9 +248,10 @@ func (oc *OutboundController) updateRemotes(pk *packet.Packet, addr *udp.Addr) {
 
 // 处理目标地址是本地VPN地址的情况
 func (oc *OutboundController) handleLocalVpnAddress(p []byte, pk *packet.Packet, internalWriter io.Writer) {
-	// 本地VPN地址 => 写入到本地网卡
 	fmt.Println("写入本地网卡 => ", p)
-	replaceAddresses(p, pk.RemoteIP, pk.LocalIP)
+	//replaceAddresses(p, pk.RemoteIP, pk.LocalIP)
+	//replaceAddresses(p, pk.LocalIP, pk.RemoteIP)
+	fmt.Println("replaceAddresses 写入本地网卡 => ", p)
 	if _, err := internalWriter.Write(p); err != nil {
 		oc.logger.WithError(err).Error("写入数据出错")
 	}
