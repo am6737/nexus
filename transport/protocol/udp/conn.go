@@ -2,11 +2,12 @@ package udp
 
 import (
 	"github.com/am6737/nexus/config"
+	"github.com/am6737/nexus/transport/protocol/udp/header"
 )
 
 const MTU = 9001
 
-type EncReader func(addr *Addr, out []byte, packet []byte)
+type EncReader func(addr *Addr, out []byte, packet []byte, h *header.Header)
 
 type Conn interface {
 	Rebind() error

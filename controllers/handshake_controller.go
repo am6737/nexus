@@ -106,8 +106,8 @@ func (hc *HandshakeController) performHandshake(addr udp.Addr) {
 		Len:      20,
 		Src:      hc.localVpnIP.ToIP(),
 		Dst:      addr.IP,
-		Options:  []byte{0, 1, 0, 2},
 		Protocol: packet.ProtoUDP,
+		Options:  []byte{0, 1, 0, 2},
 	}
 	b, _ := h.Marshal()
 	b = append(b, hh...)

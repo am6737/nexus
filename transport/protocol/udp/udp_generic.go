@@ -1,17 +1,16 @@
-///go:build (!linux || android) && !e2e_testing
-///+build !linux android
-///+build !e2e_testing
+//go:build (!linux || android) && !e2e_testing
+// +build !linux android
+// +build !e2e_testing
 
 package udp
 
 import (
 	"fmt"
 	"github.com/am6737/nexus/config"
+	"github.com/am6737/nexus/transport/protocol/udp/header"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	"golang.org/x/sys/unix"
 	"net"
-	"syscall"
 )
 
 type GenericConn struct {
@@ -38,6 +37,7 @@ func (u *GenericConn) ListenOut(r EncReader) {
 	plaintext := make([]byte, MTU)
 	buffer := make([]byte, MTU)
 	udpAddr := &Addr{IP: make([]byte, 16)}
+	h := &header.Header{}
 
 	for {
 		// Just read one packet at a time
@@ -49,7 +49,7 @@ func (u *GenericConn) ListenOut(r EncReader) {
 
 		udpAddr.IP = rua.IP
 		udpAddr.Port = uint16(rua.Port)
-		r(udpAddr, plaintext[:n], buffer[:n])
+		r(udpAddr, plaintext[:n], buffer[:n], h)
 	}
 }
 
@@ -74,26 +74,26 @@ func NewGenericListener(l *logrus.Logger, ip net.IP, port int, multi bool, batch
 	return nil, fmt.Errorf("unexpected PacketConn: %T %#v", pc, pc)
 }
 
-func NewListenConfig(multi bool) net.ListenConfig {
-	return net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
-			if multi {
-				var controlErr error
-				err := c.Control(func(fd uintptr) {
-					if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1); err != nil {
-						controlErr = fmt.Errorf("SO_REUSEPORT failed: %v", err)
-						return
-					}
-				})
-				if err != nil {
-					return err
-				}
-				if controlErr != nil {
-					return controlErr
-				}
-			}
-
-			return nil
-		},
-	}
-}
+//func NewListenConfig(multi bool) net.ListenConfig {
+//	return net.ListenConfig{
+//		Control: func(network, address string, c syscall.RawConn) error {
+//			if multi {
+//				var controlErr error
+//				err := c.Control(func(fd uintptr) {
+//					if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1); err != nil {
+//						controlErr = fmt.Errorf("SO_REUSEPORT failed: %v", err)
+//						return
+//					}
+//				})
+//				if err != nil {
+//					return err
+//				}
+//				if controlErr != nil {
+//					return controlErr
+//				}
+//			}
+//
+//			return nil
+//		},
+//	}
+//}

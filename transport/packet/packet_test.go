@@ -15,10 +15,11 @@ func Test_newPacket(t *testing.T) {
 	h := ipv4.Header{
 		Version:  1,
 		Len:      20,
+		TotalLen: 84,
 		Src:      net.IPv4(10, 0, 0, 1),
 		Dst:      net.IPv4(10, 0, 0, 2),
-		Options:  []byte{0, 1, 0, 2},
 		Protocol: ProtoUDP,
+		//Options:  []byte{0, 1, 0, 2},
 	}
 
 	//localPort := uint16(8080)
@@ -40,6 +41,12 @@ func Test_newPacket(t *testing.T) {
 
 	b = append(b, []byte{0, 3, 0, 4}...)
 	fmt.Println("len(b) => ", len(b))
+	// 定义一个包含60个0的字节切片
+	data := make([]byte, 60)
+	// 将data追加到b切片中
+	b = append(b, data...)
+	fmt.Println("len(b) 3 => ", len(b))
+
 	err := ParsePacket(b, false, p)
 	if err != nil {
 		t.Fatal(err)

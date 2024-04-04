@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/am6737/nexus/config"
+	"github.com/am6737/nexus/transport/protocol/udp/header"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"net"
@@ -114,7 +115,7 @@ func (s *StdConn) LocalAddr() (*Addr, error) {
 
 func (s *StdConn) ListenOut(r EncReader) {
 	plaintext := make([]byte, MTU)
-	//h := &header.Header{}
+	h := &header.Header{}
 	//fwPacket := &packet.Packet{}
 	udpAddr := &Addr{}
 
@@ -142,7 +143,7 @@ func (s *StdConn) ListenOut(r EncReader) {
 				udpAddr.IP = names[i][8:24]
 			}
 			udpAddr.Port = binary.BigEndian.Uint16(names[i][2:4])
-			r(udpAddr, plaintext[:0], buffers[i][:msgs[i].Len])
+			r(udpAddr, plaintext[:0], buffers[i][:msgs[i].Len], h)
 		}
 	}
 }

@@ -73,6 +73,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 	}
 
 	handshakeController := &HandshakeController{
+		localVpnIP: localVpnIP,
 		sendFunc: func(out []byte, addr *udp.Addr) error {
 			return outboundController.SendToRemote(out, addr)
 		},
@@ -104,9 +105,9 @@ func (c *ControllersManager) Start(ctx context.Context) error {
 		return err
 	}
 
-	if err := c.Handshake.Start(ctx); err != nil {
-		return err
-	}
+	//if err := c.Handshake.Start(ctx); err != nil {
+	//	return err
+	//}
 
 	go c.Inbound.Listen(func(out []byte, addr string) error {
 		return c.Outbound.Send(out, addr)

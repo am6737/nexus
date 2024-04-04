@@ -9,6 +9,7 @@ import (
 	"github.com/am6737/nexus/host"
 	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/transport/protocol/udp"
+	"github.com/am6737/nexus/transport/protocol/udp/header"
 	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -52,9 +53,19 @@ func (oc *OutboundController) Send(out []byte, addr string) error {
 		return fmt.Errorf("host %s not found", addr)
 
 	}
+	messagePacket, err := header.BuildMessagePacket(9527, 111)
+	if err != nil {
+		return err
+	}
+
+	// 创建新的数据包，先是messagePacket，后是out
+	combinedPacket := append(messagePacket, out...)
+
 	oc.logger.WithField("目标地址", addr).
 		WithField("目标远程地址", conn.Remote).
+		WithField("数据包", combinedPacket).
 		Info("出站流量")
+
 	return oc.outside.WriteTo(out, conn.Remote)
 }
 
@@ -167,13 +178,24 @@ func parseIP(ipString string) []byte {
 	return ipBytes
 }
 
-func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, internalWriter io.Writer) {
+func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.Header, internalWriter io.Writer) {
 	pk := &packet.Packet{}
 
-	fmt.Println("OutboundController handlePacket")
+	err := h.Decode(p)
+	if err != nil {
+		oc.logger.WithError(err).Error("解析数据包出错")
+		return
+	}
+
+	switch h.MessageType {
+	case header.Handshake:
+		fmt.Println("OutboundController handlePacket Handshake")
+	case header.Message:
+		fmt.Println("OutboundController handlePacket Message")
+	}
 
 	// 解析数据包
-	if err := utils.ParsePacket(p, false, pk); err != nil {
+	if err := utils.ParsePacket(p, true, pk); err != nil {
 		oc.logger.WithError(err).Error("解析数据包出错")
 		return
 	}
@@ -181,6 +203,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, internalWri
 	oc.logger.WithField("远程地址", addr).
 		WithField("源地址", pk.LocalIP).
 		WithField("目标地址", pk.RemoteIP).
+		WithField("数据包", pk).
 		WithField("原始数据", p).
 		Info("入站流量")
 
@@ -247,8 +270,8 @@ func (oc *OutboundController) handleLighthouses(p []byte, addr *udp.Addr) {
 // Listen 监听出站连接，并根据目标地址将数据包转发到相应的目标
 func (oc *OutboundController) Listen(internalWriter io.Writer) {
 	runtime.LockOSThread()
-	oc.outside.ListenOut(func(addr *udp.Addr, out []byte, p []byte) {
-		oc.handlePacket(addr, p, internalWriter)
+	oc.outside.ListenOut(func(addr *udp.Addr, out []byte, p []byte, h *header.Header) {
+		oc.handlePacket(addr, p, h, internalWriter)
 	})
 }
 

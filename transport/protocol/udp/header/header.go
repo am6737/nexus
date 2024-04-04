@@ -39,6 +39,25 @@ type Header struct {
 	MessageCounter uint64
 }
 
+func BuildMessagePacket(remoteIndex uint32, messageCounter uint64) ([]byte, error) {
+	header := &Header{
+		Version:        Version,
+		MessageType:    Message,
+		MessageSubtype: 0,
+		Reserved:       0,
+		RemoteIndex:    remoteIndex,
+		MessageCounter: messageCounter,
+	}
+
+	packet := make([]byte, Len)
+	encodedHeader, err := header.Encode(packet)
+	if err != nil {
+		return nil, err
+	}
+
+	return encodedHeader, nil
+}
+
 func BuildHandshakePacket(remoteIndex uint32, messageCounter uint64) ([]byte, error) {
 	header := &Header{
 		Version:        Version,
@@ -96,12 +115,10 @@ func (h *Header) Encode(b []byte) ([]byte, error) {
 }
 
 // Decode 将提供的字节数组解码为头部信息
-func Decode(b []byte) (*Header, error) {
+func (h *Header) Decode(b []byte) error {
 	if len(b) < Len {
-		return nil, fmt.Errorf("byte array must be at least HeaderLen bytes long")
+		return fmt.Errorf("byte array must be at least HeaderLen bytes long")
 	}
-
-	h := &Header{}
 
 	// 解码第一个字节，提取版本号和消息类型
 	h.Version = b[0] >> 4
@@ -119,5 +136,44 @@ func Decode(b []byte) (*Header, error) {
 	// 解码消息计数器，这里假设为八个字节
 	h.MessageCounter = binary.BigEndian.Uint64(b[8:16])
 
-	return h, nil
+	return nil
+}
+
+// String creates a readable string representation of a header
+func (h *Header) String() string {
+	if h == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("version=%d messagetype=%s subtype=%s reserved=%#x remoteindex=%v messagecounter=%v",
+		h.Version, h.TypeName(), h.SubTypeName(), h.Reserved, h.RemoteIndex, h.MessageCounter)
+}
+
+// TypeName will transform the headers message type into a human string
+func (h *Header) TypeName() string {
+	return TypeName(h.MessageType)
+}
+
+// TypeName will transform a nebula message type into a human string
+func TypeName(t MessageType) string {
+	if n, ok := typeMap[t]; ok {
+		return n
+	}
+
+	return "unknown"
+}
+
+// SubTypeName will transform the headers message sub type into a human string
+func (h *Header) SubTypeName() string {
+	return SubTypeName(h.MessageType, h.MessageSubtype)
+}
+
+// SubTypeName will transform a nebula message sub type into a human string
+func SubTypeName(t MessageType, s MessageSubType) string {
+	//if n, ok := subTypeMap[t]; ok {
+	//	if x, ok := (*n)[s]; ok {
+	//		return x
+	//	}
+	//}
+
+	return "unknown"
 }

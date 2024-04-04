@@ -30,20 +30,25 @@ type Packet struct {
 	Fragment   bool
 }
 
-func (fp *Packet) Copy() *Packet {
+func (p *Packet) String() string {
+	return fmt.Sprintf("Packet{LocalIP: %s, RemoteIP: %s, LocalPort: %d, RemotePort: %d, Protocol: %d, Fragment: %t}",
+		p.LocalIP, p.RemoteIP, p.LocalPort, p.RemotePort, p.Protocol, p.Fragment)
+}
+
+func (p *Packet) Copy() *Packet {
 	return &Packet{
-		LocalIP:    fp.LocalIP,
-		RemoteIP:   fp.RemoteIP,
-		LocalPort:  fp.LocalPort,
-		RemotePort: fp.RemotePort,
-		Protocol:   fp.Protocol,
-		Fragment:   fp.Fragment,
+		LocalIP:    p.LocalIP,
+		RemoteIP:   p.RemoteIP,
+		LocalPort:  p.LocalPort,
+		RemotePort: p.RemotePort,
+		Protocol:   p.Protocol,
+		Fragment:   p.Fragment,
 	}
 }
 
-func (fp Packet) MarshalJSON() ([]byte, error) {
+func (p Packet) MarshalJSON() ([]byte, error) {
 	var proto string
-	switch fp.Protocol {
+	switch p.Protocol {
 	case ProtoTCP:
 		proto = "tcp"
 	case ProtoICMP:
@@ -51,15 +56,15 @@ func (fp Packet) MarshalJSON() ([]byte, error) {
 	case ProtoUDP:
 		proto = "udp"
 	default:
-		proto = fmt.Sprintf("unknown %v", fp.Protocol)
+		proto = fmt.Sprintf("unknown %v", p.Protocol)
 	}
 	return json.Marshal(m{
-		"LocalIP":    fp.LocalIP.String(),
-		"RemoteIP":   fp.RemoteIP.String(),
-		"LocalPort":  fp.LocalPort,
-		"RemotePort": fp.RemotePort,
+		"LocalIP":    p.LocalIP.String(),
+		"RemoteIP":   p.RemoteIP.String(),
+		"LocalPort":  p.LocalPort,
+		"RemotePort": p.RemotePort,
 		"Protocol":   proto,
-		"Fragment":   fp.Fragment,
+		"Fragment":   p.Fragment,
 	})
 }
 

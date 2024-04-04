@@ -8,6 +8,7 @@ import (
 	"github.com/am6737/nexus/host"
 	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/transport/protocol/udp"
+	"github.com/am6737/nexus/transport/protocol/udp/header"
 	"github.com/am6737/nexus/tun"
 	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
@@ -154,7 +155,7 @@ func (itf *Interface) listenOut(i int) {
 		li = itf.outside
 	}
 
-	li.ListenOut(func(addr *udp.Addr, out []byte, p []byte) {
+	li.ListenOut(func(addr *udp.Addr, out []byte, p []byte, h *header.Header) {
 		itf.logger.WithField("interface", itf.inside.Name()).
 			WithField("udpAddr", addr).
 			WithField("out", out).
