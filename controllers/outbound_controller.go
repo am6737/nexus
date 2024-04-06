@@ -196,8 +196,8 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 	}
 
 	oc.logger.WithField("远程地址", addr).
-		WithField("源地址", pk.RemoteIP).
-		WithField("目标地址", pk.LocalIP).
+		WithField("源地址", pk.LocalIP).
+		WithField("目标地址", pk.RemoteIP).
 		WithField("数据包", pk).
 		WithField("原始数据", p).
 		Info("入站流量")
@@ -211,12 +211,12 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 
 		// 远程请求过来的流量是访问的自己的地址
 		if pk.RemoteIP.String() == oc.localVpnIP.String() {
-			fmt.Println("pk.LocalIP => ", pk.LocalIP)
-			fmt.Println("pk.RemoteIP => ", pk.RemoteIP)
-			fmt.Println("oc.localVpnIP => ", oc.localVpnIP)
-			fmt.Println("o1 p => ", p)
+			//fmt.Println("pk.LocalIP => ", pk.LocalIP)
+			//fmt.Println("pk.RemoteIP => ", pk.RemoteIP)
+			//fmt.Println("oc.localVpnIP => ", oc.localVpnIP)
+			//fmt.Println("o1 p => ", p)
 			replaceAddresses(p, pk.LocalIP, pk.RemoteIP)
-			fmt.Println("o2 p => ", p)
+			//fmt.Println("o2 p => ", p)
 			oc.handleLocalVpnAddress(p, pk, internalWriter)
 			return
 		}
@@ -229,12 +229,13 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 			if err := oc.outside.WriteTo(out, addr); err != nil {
 				oc.logger.WithError(err).WithField("addr", addr).Error("数据转发到远程")
 			}
-			return
 		}
 	}
 
 	// 更新 remotes 映射表
 	oc.updateRemotes(pk, addr)
+
+	fmt.Println("映射表 => ", oc.remotes)
 
 	// 处理目标地址是灯塔的情况
 	//oc.handleLighthouses(p, addr)
