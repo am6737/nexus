@@ -15,6 +15,8 @@ import (
 	"unsafe"
 )
 
+const DefaultMTU = 1300
+
 type ifReq struct {
 	Name  [16]byte
 	Flags uint16
@@ -75,6 +77,10 @@ func newTun(deviceName string, cidr *net.IPNet, defaultMTU int, txQueueLen int, 
 	name := strings.Trim(string(req.Name[:]), "\x00")
 
 	file := os.NewFile(uintptr(fd), "/dev/net/tun")
+
+	if defaultMTU == 0 {
+		defaultMTU = DefaultMTU
+	}
 
 	maxMTU := defaultMTU
 

@@ -18,6 +18,8 @@ import (
 	"sync/atomic"
 )
 
+const mtu = 9001
+
 var _ interfaces.InboundController = &InboundController{}
 
 // InboundController 入站控制器 必须实现 interfaces.InboundController 接口
@@ -47,7 +49,7 @@ func (ic *InboundController) Send(p []byte) (n int, err error) {
 func (ic *InboundController) Listen(outbound func(out []byte, addr string) error) {
 	runtime.LockOSThread()
 	p := &packet.Packet{}
-	packet := make([]byte, ic.mtu)
+	packet := make([]byte, mtu)
 	for {
 		n, err := ic.inside.Read(packet)
 		if err != nil {
