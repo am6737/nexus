@@ -18,7 +18,9 @@ import (
 	"sync/atomic"
 )
 
-const mtu = 9001
+const (
+	mtu = 9001
+)
 
 var _ interfaces.InboundController = &InboundController{}
 

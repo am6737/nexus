@@ -229,14 +229,12 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 			if err := oc.outside.WriteTo(out, addr); err != nil {
 				oc.logger.WithError(err).WithField("addr", addr).Error("数据转发到远程")
 			}
-			//return
+			return
 		}
 	}
 
 	// 更新 remotes 映射表
 	oc.updateRemotes(pk, addr)
-
-	oc.logger.WithField("remotes", oc.remotes).Info("更新 remotes 映射表")
 
 	// 处理目标地址是灯塔的情况
 	//oc.handleLighthouses(p, addr)

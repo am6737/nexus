@@ -105,9 +105,9 @@ func (c *ControllersManager) Start(ctx context.Context) error {
 		return err
 	}
 
-	if err := c.Handshake.Start(ctx); err != nil {
-		return err
-	}
+	//if err := c.Handshake.Start(ctx); err != nil {
+	//	return err
+	//}
 
 	go c.Inbound.Listen(func(out []byte, addr string) error {
 		return c.Outbound.Send(out, addr)
