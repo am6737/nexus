@@ -209,15 +209,18 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		out := p
 		p = p[header.Len:]
 
-		// 远程请求过来的流量是访问的自己的地址
-		if pk.RemoteIP.String() == oc.localVpnIP.String() {
+		if pk.RemoteIP == oc.localVpnIP {
+			fmt.Println("u1")
 			replaceAddresses(p, pk.LocalIP, pk.RemoteIP)
 			oc.handleLocalVpnAddress(p, pk, internalWriter)
 			return
 		}
 
-		// 远程访问本地地址，需要写入网卡且回应给远程
-		if oc.localVpnIP.String() == pk.LocalIP.String() {
+		if oc.localVpnIP == pk.LocalIP {
+			fmt.Println("u2")
+			if pk.Protocol != packet.ProtoICMP {
+				oc.handleLocalVpnAddress(p, pk, internalWriter)
+			}
 			if err := oc.outside.WriteTo(out, addr); err != nil {
 				oc.logger.WithError(err).WithField("addr", addr).Error("数据转发到远程")
 			}
