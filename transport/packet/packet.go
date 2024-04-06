@@ -21,6 +21,20 @@ const (
 	PortFragment = -1 // Special value for matching `port: fragment`
 )
 
+var protocolMap = map[uint8]string{
+	ProtoTCP:  "tcp",
+	ProtoUDP:  "udp",
+	ProtoICMP: "icmp",
+}
+
+func TypeName(t uint8) string {
+	if n, ok := protocolMap[t]; ok {
+		return n
+	}
+
+	return "unknown"
+}
+
 type Packet struct {
 	LocalIP    api.VpnIp
 	RemoteIP   api.VpnIp
@@ -31,8 +45,12 @@ type Packet struct {
 }
 
 func (p *Packet) String() string {
-	return fmt.Sprintf("Packet{LocalIP: %s, RemoteIP: %s, LocalPort: %d, RemotePort: %d, Protocol: %d, Fragment: %t}",
-		p.LocalIP, p.RemoteIP, p.LocalPort, p.RemotePort, p.Protocol, p.Fragment)
+	fragment := "no"
+	if p.Fragment {
+		fragment = "yes"
+	}
+	return fmt.Sprintf("LocalIP=%s RemoteIP=%s LocalPort=%d RemotePort=%d Protocol=%s Fragment=%v",
+		p.LocalIP, p.RemoteIP, p.LocalPort, p.RemotePort, TypeName(p.Protocol), fragment)
 }
 
 func (p *Packet) Copy() *Packet {

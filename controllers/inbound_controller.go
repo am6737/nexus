@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
@@ -72,7 +71,7 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 		return
 	}
 	//
-	fmt.Println("data => ", data)
+	//fmt.Println("data => ", data)
 	//fmt.Println("len(data) => ", len(data))
 
 	if packet.RemoteIP == ic.localVpnIP {
@@ -90,9 +89,9 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 		return
 	}
 
-	ic.logger.WithField("源地址", packet.LocalIP.String()).
-		WithField("目标地址", packet.RemoteIP.String()).
-		Info("流量从本地tun设备转发到远程udp设备")
+	//ic.logger.WithField("源地址", packet.LocalIP.String()).
+	//	WithField("目标地址", packet.RemoteIP.String()).
+	//	Info("流量从本地tun设备转发到远程udp设备")
 
 	//if err := ic.outside.WriteTo(data, host.Remote); err != nil {
 	//	ic.logger.WithError(err).Error("Failed to forward to udp")
