@@ -22,7 +22,7 @@ var _ interfaces.OutboundController = &OutboundController{}
 // OutboundController 出站控制器 必须实现 interfaces.OutboundController 接口
 type OutboundController struct {
 	outside     udp.Conn
-	remotes     map[api.VpnIp]*host.HostInfo
+	hosts       *host.HostMap
 	lighthouses []*host.HostInfo
 	localVpnIP  api.VpnIp
 	logger      *logrus.Logger
@@ -34,60 +34,54 @@ func (oc *OutboundController) SendToRemote(out []byte, addr *udp.Addr) error {
 	return oc.outside.WriteTo(out, addr)
 }
 
-func (oc *OutboundController) Send(out []byte, addr string) error {
-	ip, err := api.ParseVpnIp(addr)
-	if err != nil {
-		return err
-	}
+func (oc *OutboundController) Send(out []byte, vip api.VpnIp) error {
 	messagePacket, err := header.BuildMessagePacket(9527, 111)
 	if err != nil {
 		return err
 	}
 
-	// 创建新的数据包，先是messagePacket，后是out
+	// 创建新的数据包，将头部和数据包拼接
 	out = append(messagePacket, out...)
 
-	conn, ok := oc.remotes[ip]
-	if !ok {
+	host := oc.hosts.QueryVpnIp(vip)
+	if host == nil {
 		for _, lighthouse := range oc.lighthouses {
 			if lighthouse != nil {
-				oc.logger.WithField("目标地址", addr).
+				oc.logger.WithField("目标地址", vip).
 					WithField("灯塔地址", lighthouse.Remote).
 					Info("出站流量转发到灯塔 OutboundController => Lighthouse")
 				return oc.outside.WriteTo(out, lighthouse.Remote)
 			}
 		}
-
-		return fmt.Errorf("host %s not found", addr)
-
+		return fmt.Errorf("host %s not found", vip)
 	}
 
-	oc.logger.WithField("目标地址", addr).
-		WithField("目标远程地址", conn.Remote).
+	oc.logger.WithField("目标地址", vip).
+		WithField("目标远程地址", host.Remote).
 		WithField("数据包", out).
 		Info("出站流量")
-	return oc.outside.WriteTo(out, conn.Remote)
+	return oc.outside.WriteTo(out, host.Remote)
 }
 
 func (oc *OutboundController) Start(ctx context.Context) error {
-	// 解析监听主机地址
-	listenHost, err := resolveListenHost(oc.cfg.Listen.Host)
-	if err != nil {
-		return err
-	}
-
-	// 设置 UDP 服务器
-	udpServer, err := udp.NewListener(oc.logger, listenHost.IP, oc.cfg.Listen.Port, oc.cfg.Listen.Routines > 1, oc.cfg.Listen.Batch)
-	//udpServer, err := udp.NewGenericListener(oc.logger, listenHost.IP, oc.cfg.Listen.Port, oc.cfg.Listen.Routines > 1, oc.cfg.Listen.Batch)
-	if err != nil {
-		return err
-	}
-	udpServer.ReloadConfig(oc.cfg)
-	oc.outside = udpServer
+	//// 解析监听主机地址
+	//listenHost, err := resolveListenHost(oc.cfg.Listen.Host)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//// 设置 UDP 服务器
+	//udpServer, err := udp.NewListener(oc.logger, listenHost.IP, oc.cfg.Listen.Port, oc.cfg.Listen.Routines > 1, oc.cfg.Listen.Batch)
+	////udpServer, err := udp.NewGenericListener(oc.logger, listenHost.IP, oc.cfg.Listen.Port, oc.cfg.Listen.Routines > 1, oc.cfg.Listen.Batch)
+	//if err != nil {
+	//	return err
+	//}
+	//udpServer.ReloadConfig(oc.cfg)
+	//oc.outside = udpServer
 
 	// 如果端口是动态的，则获取端口
 	if oc.cfg.Listen.Port == 0 {
-		uPort, err := udpServer.LocalAddr()
+		uPort, err := oc.outside.LocalAddr()
 		if err != nil {
 			return err
 		}
@@ -104,7 +98,7 @@ func (oc *OutboundController) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	oc.logger.WithField("udpAddr", addr).Info("OutboundController is up")
+	oc.logger.WithField("udpAddr", addr).Info("Starting outbound controller")
 	return nil
 }
 
@@ -129,14 +123,7 @@ func (oc *OutboundController) configureStaticHostMap() {
 			continue
 		}
 		vpnIp := api.Ip2VpnIp(ip)
-		oc.remotes[vpnIp] = &host.HostInfo{
-			Remote: &udp.Addr{
-				IP:   udpAddr.IP,
-				Port: uint16(udpAddr.Port),
-			},
-			Remotes: host.RemoteList{},
-			VpnIp:   vpnIp,
-		}
+		oc.hosts.AddHost(vpnIp, udpAddr)
 	}
 }
 
@@ -148,7 +135,8 @@ func (oc *OutboundController) getLighthouses() []*host.HostInfo {
 			oc.logger.WithError(err).WithField("lighthouse", ip).Error("解析VPN地址失败")
 			continue
 		}
-		if host, ok := oc.remotes[vpnIp]; ok {
+		host := oc.hosts.QueryVpnIp(vpnIp)
+		if host != nil {
 			lighthouses = append(lighthouses, host)
 		} else {
 			oc.logger.WithField("lighthouse", vpnIp).Error("灯塔未配置静态地址映射")
@@ -204,7 +192,11 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 
 	switch h.MessageType {
 	case header.Handshake:
-		fmt.Println("OutboundController handlePacket Handshake")
+		oc.logger.
+			WithField("握手数据包", p).
+			WithField("远程地址", addr).
+			Info("收到握手数据包")
+		oc.handleHandshake(pk)
 	case header.Message:
 		out := p
 		p = p[header.Len:]
@@ -225,23 +217,27 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 				oc.logger.WithError(err).WithField("addr", addr).Error("数据转发到远程")
 			}
 		}
+		// 更新 remotes 映射表
+		oc.updateRemotes(pk, addr)
+	case header.LightHouse:
+		// 处理目标地址是灯塔的情况
+		//oc.handleLighthouses(p, addr)
+	default:
+
 	}
+}
 
-	// 更新 remotes 映射表
-	oc.updateRemotes(pk, addr)
+func (oc *OutboundController) handleHandshake(pk *packet.Packet) {
 
-	// 处理目标地址是灯塔的情况
-	//oc.handleLighthouses(p, addr)
 }
 
 // 更新 remotes 映射表
 func (oc *OutboundController) updateRemotes(pk *packet.Packet, addr *udp.Addr) {
-	if _, ok := oc.remotes[pk.RemoteIP]; !ok {
-		oc.remotes[pk.RemoteIP] = &host.HostInfo{
-			Remote: addr,
-			VpnIp:  pk.RemoteIP,
-		}
+	udpAddr := &net.UDPAddr{
+		IP:   addr.IP,
+		Port: int(addr.Port),
 	}
+	oc.hosts.UpdateHost(pk.RemoteIP, udpAddr)
 }
 
 // 处理目标地址是本地VPN地址的情况

@@ -31,6 +31,22 @@ type ControllersManager struct {
 func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun.Device) *ControllersManager {
 	localVpnIP := api.Ip2VpnIp(tun.Cidr().IP)
 
+	hosts := host.NewHostMap(logger, tun.Cidr(), nil)
+
+	// 解析监听主机地址
+	listenHost, err := resolveListenHost(config.Listen.Host)
+	if err != nil {
+		panic(err)
+	}
+
+	// 设置 UDP 服务器
+	udpServer, err := udp.NewListener(logger, listenHost.IP, config.Listen.Port, config.Listen.Routines > 1, config.Listen.Batch)
+	//udpServer, err := udp.NewGenericListener(oc.logger, listenHost.IP, oc.cfg.Listen.Port, oc.cfg.Listen.Routines > 1, oc.cfg.Listen.Batch)
+	if err != nil {
+		panic(err)
+	}
+	udpServer.ReloadConfig(config)
+
 	// Initialize inbound controller
 	inboundLogger := logger.WithField("controller", "Inbound")
 	inboundController := &InboundController{
@@ -47,7 +63,8 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		localVpnIP: localVpnIP,
 		logger:     outboundLogger.Logger,
 		cfg:        config,
-		remotes:    make(map[api.VpnIp]*host.HostInfo),
+		hosts:      hosts,
+		outside:    udpServer,
 	}
 
 	lighthouses := map[api.VpnIp]*host.HostInfo{}
@@ -71,18 +88,15 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 			}
 		}
 	}
+	hosts.Hosts = lighthouses
 
-	handshakeController := &HandshakeController{
-		localVpnIP: localVpnIP,
-		sendFunc: func(out []byte, addr *udp.Addr) error {
-			return outboundController.SendToRemote(out, addr)
-		},
-		mtu:            tun.MTU(),
-		lighthouses:    lighthouses,
-		hosts:          make(map[api.VpnIp]*host.HostInfo),
-		handshakeQueue: make(chan udp.Addr),
-		logger:         logger.WithField("controller", "Handshake").Logger,
-	}
+	handshakeController := NewHandshakeController(
+		logger.WithField("controller", "Handshake").Logger,
+		hosts,
+		&struct{}{},
+		udpServer,
+		config.Handshake,
+	)
 
 	// Initialize controllers manager
 	controllersManager := &ControllersManager{
@@ -105,12 +119,12 @@ func (c *ControllersManager) Start(ctx context.Context) error {
 		return err
 	}
 
-	//if err := c.Handshake.Start(ctx); err != nil {
-	//	return err
-	//}
+	if err := c.Handshake.Start(ctx); err != nil {
+		return err
+	}
 
-	go c.Inbound.Listen(func(out []byte, addr string) error {
-		return c.Outbound.Send(out, addr)
+	go c.Inbound.Listen(func(out []byte, ip api.VpnIp) error {
+		return c.Outbound.Send(out, ip)
 	})
 
 	go c.Outbound.Listen(c.internalWriter)

@@ -3,6 +3,7 @@ package config
 import (
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
+	"time"
 )
 
 type Config struct {
@@ -10,6 +11,7 @@ type Config struct {
 	Lighthouse    LighthouseConfig    `yaml:"lighthouse"`
 	Listen        ListenConfig        `yaml:"listen"`
 	Tun           TunConfig           `yaml:"tun"`
+	Handshake     HandshakeConfig     `yaml:"handshake"`
 }
 
 type LighthouseConfig struct {
@@ -44,6 +46,14 @@ type TunConfig struct {
 	DropMulticast      bool   `yaml:"drop_multicast"`
 	TxQueue            int    `yaml:"tx_queue"`
 	MTU                int    `yaml:"mtu"`
+}
+
+// HandshakeConfig 握手配置
+type HandshakeConfig struct {
+	TryInterval   time.Duration // 尝试间隔
+	Retries       int           // 尝试次数
+	TriggerBuffer int           // 触发缓冲
+	UseRelays     bool          // 是否使用中继
 }
 
 func Load(filename string) (*Config, error) {

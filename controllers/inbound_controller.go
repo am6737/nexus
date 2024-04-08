@@ -40,6 +40,11 @@ func (ic *InboundController) Start(ctx context.Context) error {
 		}
 		ic.logger.Fatal(err)
 	}
+	ic.logger.
+		WithField("localVpnIP", ic.localVpnIP).
+		WithField("dev", ic.cfg.Tun.Dev).
+		WithField("mtu", ic.mtu).
+		Info("Starting inbound controller")
 	return nil
 }
 
@@ -47,7 +52,7 @@ func (ic *InboundController) Send(p []byte) (n int, err error) {
 	return ic.inside.Write(p)
 }
 
-func (ic *InboundController) Listen(outbound func(out []byte, addr string) error) {
+func (ic *InboundController) Listen(outbound func(out []byte, addr api.VpnIp) error) {
 	runtime.LockOSThread()
 	p := &packet.Packet{}
 	packet := make([]byte, mtu)
@@ -65,7 +70,7 @@ func (ic *InboundController) Listen(outbound func(out []byte, addr string) error
 	}
 }
 
-func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Packet, internalWriter io.Writer, outbound func(out []byte, addr string) error) {
+func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Packet, internalWriter io.Writer, outbound func(out []byte, addr api.VpnIp) error) {
 	if err := utils.ParsePacket(data, false, packet); err != nil {
 		ic.logger.WithField("packet", packet).Debugf("Error while validating outbound packet: %s", err)
 		return
@@ -97,7 +102,7 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 	//	ic.logger.WithError(err).Error("Failed to forward to udp")
 	//}
 
-	if err := outbound(data, packet.RemoteIP.String()); err != nil {
+	if err := outbound(data, packet.RemoteIP); err != nil {
 		ic.logger.WithError(err).Error("Error while forwarding outbound packet")
 		return
 	}

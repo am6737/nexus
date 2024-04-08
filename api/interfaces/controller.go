@@ -22,7 +22,7 @@ type Runnable interface {
 type OutboundController interface {
 	Runnable
 	Listen(internalWriter io.Writer)
-	Send(out []byte, addr string) error
+	Send(out []byte, vip api.VpnIp) error
 	SendToRemote(out []byte, addr *udp.Addr) error
 	Close() error
 }
@@ -30,7 +30,7 @@ type OutboundController interface {
 // InboundController 入站控制器接口
 type InboundController interface {
 	Runnable
-	Listen(outbound func(out []byte, addr string) error)
+	Listen(outbound func(out []byte, ip api.VpnIp) error)
 	Send(p []byte) (n int, err error)
 	Close() error
 }
