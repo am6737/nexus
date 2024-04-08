@@ -75,16 +75,19 @@ func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, li
 func (hc *HandshakeController) Start(ctx context.Context) error {
 	hc.logger.Info("Starting handshake controller")
 	go hc.handshakeAllHosts(ctx)
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case vpnIP := <-hc.outboundTrigger:
-			hc.handleOutbound(vpnIP, true)
-		case <-hc.outboundTimer.C:
-			hc.handleOutboundTimerTick()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case vpnIP := <-hc.outboundTrigger:
+				hc.handleOutbound(vpnIP, true)
+			case <-hc.outboundTimer.C:
+				hc.handleOutboundTimerTick()
+			}
 		}
-	}
+	}()
+	return nil
 }
 
 // handshakeAllHosts 对所有主机进行握手
@@ -183,6 +186,7 @@ func (hc *HandshakeController) handleOutbound(vpnIP api.VpnIp, lighthouseTrigger
 
 	// 发送握手消息到远程地址列表中的每个地址
 	for _, remoteAddr := range remoteAddrList {
+		fmt.Println("handshakePacket => ", handshakePacket)
 		if err := hc.outside.WriteTo(handshakePacket, remoteAddr); err != nil {
 			hc.logger.Errorf("failed to send handshake packet to %s: %v", remoteAddr, err)
 			continue

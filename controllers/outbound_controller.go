@@ -145,27 +145,6 @@ func (oc *OutboundController) getLighthouses() []*host.HostInfo {
 	return lighthouses
 }
 
-func replaceAddresses(out []byte, localIP api.VpnIp, remoteIP api.VpnIp) {
-	copy(out[12:16], parseIP(localIP.String()))  // 将本地IP地址替换到目标IP地址的位置
-	copy(out[16:20], parseIP(remoteIP.String())) // 将目标IP地址替换到源IP地址的位置
-}
-
-func parseIP(ipString string) []byte {
-	// 解析 IPv4 地址字符串为 net.IP 类型
-	ip := net.ParseIP(ipString)
-	if ip == nil {
-		fmt.Println("Invalid IP address:", ipString)
-		return nil
-	}
-	// 将 net.IP 类型转换为 []byte 切片
-	ipBytes := ip.To4()
-	if ipBytes == nil {
-		fmt.Println("Invalid IPv4 address:", ipString)
-		return nil
-	}
-	return ipBytes
-}
-
 func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.Header, internalWriter io.Writer) {
 	pk := &packet.Packet{}
 
@@ -273,4 +252,25 @@ func (oc *OutboundController) Listen(internalWriter io.Writer) {
 
 func (oc *OutboundController) Close() error {
 	return oc.outside.Close()
+}
+
+func replaceAddresses(out []byte, localIP api.VpnIp, remoteIP api.VpnIp) {
+	copy(out[12:16], parseIP(localIP.String()))  // 将本地IP地址替换到目标IP地址的位置
+	copy(out[16:20], parseIP(remoteIP.String())) // 将目标IP地址替换到源IP地址的位置
+}
+
+func parseIP(ipString string) []byte {
+	// 解析 IPv4 地址字符串为 net.IP 类型
+	ip := net.ParseIP(ipString)
+	if ip == nil {
+		fmt.Println("Invalid IP address:", ipString)
+		return nil
+	}
+	// 将 net.IP 类型转换为 []byte 切片
+	ipBytes := ip.To4()
+	if ipBytes == nil {
+		fmt.Println("Invalid IPv4 address:", ipString)
+		return nil
+	}
+	return ipBytes
 }
