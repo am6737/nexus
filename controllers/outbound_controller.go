@@ -154,14 +154,6 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		return
 	}
 
-	// 解析数据包
-	// 将incoming参数设置为true
-	err = utils.ParsePacket(p[header.Len:], true, pk)
-	if err != nil {
-		oc.logger.WithError(err).Error("解析数据包出错")
-		return
-	}
-
 	oc.logger.WithField("远程地址", addr).
 		WithField("源地址", pk.LocalIP).
 		WithField("目标地址", pk.RemoteIP).
@@ -178,6 +170,13 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		oc.handleHandshake(pk)
 	case header.Message:
 		out := p
+		// 解析数据包
+		// 将incoming参数设置为true
+		err = utils.ParsePacket(p[header.Len:], true, pk)
+		if err != nil {
+			oc.logger.WithError(err).Error("解析数据包出错")
+			return
+		}
 		p = p[header.Len:]
 
 		if pk.RemoteIP == oc.localVpnIP {
