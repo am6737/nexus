@@ -189,7 +189,8 @@ func (hc *HandshakeController) handleOutbound(vpnIP api.VpnIp, lighthouseTrigger
 	var buf bytes.Buffer
 	buf.Write(handshakePacket)
 	buf.Write(pv4Packet)
-	buf.Write([]byte("1111"))
+	additionalData := make([]byte, 4)
+	buf.Write(additionalData)
 
 	fmt.Println("vpnIP => ", vpnIP)
 

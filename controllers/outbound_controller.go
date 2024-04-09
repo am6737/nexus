@@ -202,6 +202,8 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		return
 	}
 
+	fmt.Println("p[header.Len:] => ", p[header.Len:])
+
 	// 解析数据包
 	// 将incoming参数设置为true
 	if err := utils.ParsePacket(p[header.Len:], true, pk); err != nil {

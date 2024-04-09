@@ -77,7 +77,7 @@ func TestBuildIPv4Packet(t *testing.T) {
 	packet = append(packet, additionalData...)
 
 	p := &Packet{}
-	err = ParsePacket(packet, false, p)
+	err = ParsePacket(packet, true, p)
 	if err != nil {
 		panic(err)
 	}
