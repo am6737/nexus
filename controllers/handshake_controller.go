@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/binary"
@@ -9,6 +10,7 @@ import (
 	"github.com/am6737/nexus/config"
 	"github.com/am6737/nexus/host"
 	pmetrics "github.com/am6737/nexus/metrics"
+	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/transport/protocol/udp/header"
 	"github.com/rcrowley/go-metrics"
@@ -35,6 +37,8 @@ type HandshakeHostInfo struct {
 type HandshakeController struct {
 	sync.RWMutex
 
+	localVIP api.VpnIp
+
 	hosts           map[api.VpnIp]*HandshakeHostInfo // 主机信息列表
 	config          *config.HandshakeConfig          // 握手配置
 	outboundTimer   *time.Timer                      // 发送握手消息的定时器
@@ -52,12 +56,13 @@ type HandshakeController struct {
 }
 
 // NewHandshakeController 创建一个新的 HandshakeController 实例
-func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, outside udp.Conn, config config.HandshakeConfig) *HandshakeController {
+func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, outside udp.Conn, config config.HandshakeConfig, localVIP api.VpnIp) *HandshakeController {
 	index, err := generateIndex()
 	if err != nil {
 		panic(err)
 	}
 	return &HandshakeController{
+		localVIP:        localVIP,
 		hosts:           make(map[api.VpnIp]*HandshakeHostInfo),
 		config:          ApplyDefaultHandshakeConfig(&config),
 		outboundTimer:   time.NewTimer(config.TryInterval),
@@ -173,6 +178,16 @@ func (hc *HandshakeController) handleOutbound(vpnIP api.VpnIp, lighthouseTrigger
 		return
 	}
 
+	pv4Packet, err := packet.BuildIPv4Packet(hc.localVIP.ToIP(), vpnIP.ToIP(), packet.ProtoUDP, false)
+	if err != nil {
+		hc.logger.Errorf("failed to build IPv4 packet: %v", err)
+		return
+	}
+
+	var buf bytes.Buffer
+	buf.Write(handshakePacket)
+	buf.Write(pv4Packet)
+
 	fmt.Println("vpnIP => ", vpnIP)
 
 	// 获取远程地址列表
@@ -185,8 +200,8 @@ func (hc *HandshakeController) handleOutbound(vpnIP api.VpnIp, lighthouseTrigger
 
 	// 发送握手消息到远程地址列表中的每个地址
 	for _, remoteAddr := range remoteAddrList {
-		fmt.Println("handshakePacket => ", handshakePacket)
-		if err := hc.outside.WriteTo(handshakePacket, remoteAddr); err != nil {
+		fmt.Println("handshakePacket => ", buf.Bytes())
+		if err := hc.outside.WriteTo(buf.Bytes(), remoteAddr); err != nil {
 			hc.logger.Errorf("failed to send handshake packet to %s: %v", remoteAddr, err)
 			continue
 		}

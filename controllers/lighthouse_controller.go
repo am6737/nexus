@@ -23,17 +23,21 @@ var (
 
 var _ interfaces.LighthouseController = &LighthouseController{}
 
-func NewLighthouseController() *LighthouseController {
+func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow interfaces.OutsideWriter) *LighthouseController {
 	return &LighthouseController{
-		hosts:       make(map[api.VpnIp]*host.HostInfo),
+		logger: logger,
+		host:   host,
+		ow:     ow,
+		//hosts:       make(map[api.VpnIp]*host.HostInfo),
 		queryQueue:  make(chan api.VpnIp, 1000),
 		queryWorker: &sync.WaitGroup{},
 	}
 }
 
 type LighthouseController struct {
-	mu          sync.RWMutex
-	hosts       map[api.VpnIp]*host.HostInfo
+	mu   sync.RWMutex
+	host *host.HostMap
+	//hosts       map[api.VpnIp]*host.HostInfo
 	queryQueue  chan api.VpnIp
 	queryWorker *sync.WaitGroup
 	logger      *logrus.Logger
@@ -55,7 +59,10 @@ func (lc *LighthouseController) HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIp, 
 func (lc *LighthouseController) handleHostQuery(n interface{}, ip api.VpnIp, addr *udp.Addr) {
 	host, err := lc.Query(ip)
 	if err != nil {
-		lc.logger.WithError(err).Error("LighthouseController handleHostQuery")
+		lc.logger.
+			WithField("vpnIp", ip).
+			WithError(err).
+			Warn("LighthouseController handleHostQuery")
 		return
 	}
 	var buf bytes.Buffer
@@ -79,7 +86,7 @@ func (lc *LighthouseController) handleHostQueryReply(ip api.VpnIp, p []byte) {
 }
 
 func (lc *LighthouseController) Start(ctx context.Context) error {
-	log.Println("LighthouseController started successfully")
+	lc.logger.Info("Starting lighthouse controller")
 	// 启动定时任务，定期发送节点更新通知
 	go lc.startUpdateWorker(ctx)
 	// 启动查询处理工作人员
@@ -117,7 +124,7 @@ func (lc *LighthouseController) startQueryWorker(ctx context.Context) {
 }
 
 func (lc *LighthouseController) Query(vpnIP api.VpnIp) (*host.HostInfo, error) {
-	if host, ok := lc.hosts[vpnIP]; ok {
+	if host, ok := lc.host.Hosts[vpnIP]; ok {
 		return host, nil
 	}
 	lc.queryQueue <- vpnIP
@@ -154,7 +161,7 @@ func (lc *LighthouseController) Store(info *host.HostInfo) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	lc.hosts[info.VpnIp] = info
+	lc.host.Hosts[info.VpnIp] = info
 	log.Printf("Node stored successfully: %+v\n", info)
 	return nil
 }

@@ -23,9 +23,10 @@ type ControllersManager struct {
 	hostMap        *host.HostMap
 	internalWriter io.Writer
 
-	Handshake interfaces.HandshakeController
-	Inbound   interfaces.InboundController
-	Outbound  interfaces.OutboundController
+	Handshake  interfaces.HandshakeController
+	Inbound    interfaces.InboundController
+	Outbound   interfaces.OutboundController
+	lighthouse interfaces.LighthouseController
 }
 
 func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun.Device) *ControllersManager {
@@ -96,12 +97,21 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		&struct{}{},
 		udpServer,
 		config.Handshake,
+		localVpnIP,
 	)
+
+	lighthouseController := NewLighthouseController(
+		logger.WithField("controller", "Lighthouse").Logger,
+		hosts,
+		outboundController,
+	)
+	outboundController.lighthouse = lighthouseController
 
 	// Initialize controllers manager
 	controllersManager := &ControllersManager{
 		logger:         logger,
 		internalWriter: tun,
+		lighthouse:     lighthouseController,
 		Handshake:      handshakeController,
 		Inbound:        inboundController,
 		Outbound:       outboundController,
@@ -120,6 +130,10 @@ func (c *ControllersManager) Start(ctx context.Context) error {
 	}
 
 	if err := c.Handshake.Start(ctx); err != nil {
+		return err
+	}
+
+	if err := c.lighthouse.Start(ctx); err != nil {
 		return err
 	}
 
