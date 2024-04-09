@@ -52,7 +52,7 @@ func (ic *InboundController) Send(p []byte) (n int, err error) {
 	return ic.inside.Write(p)
 }
 
-func (ic *InboundController) Listen(outbound func(out []byte, addr api.VpnIp) error) {
+func (ic *InboundController) Listen(externalWriter interfaces.OutsideWriter) {
 	runtime.LockOSThread()
 	p := &packet.Packet{}
 	packet := make([]byte, mtu)
@@ -66,11 +66,11 @@ func (ic *InboundController) Listen(outbound func(out []byte, addr api.VpnIp) er
 			// This only seems to happen when something fatal happens to the fd, so exit.
 			os.Exit(2)
 		}
-		ic.consumeInsidePacket(packet[:n], p, ic.inside, outbound)
+		ic.consumeInsidePacket(packet[:n], p, ic.inside, externalWriter)
 	}
 }
 
-func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Packet, internalWriter io.Writer, outbound func(out []byte, addr api.VpnIp) error) {
+func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Packet, internalWriter io.Writer, externalWriter interfaces.OutsideWriter) {
 	if err := utils.ParsePacket(data, false, packet); err != nil {
 		ic.logger.WithField("packet", packet).Debugf("Error while validating outbound packet: %s", err)
 		return
@@ -102,7 +102,7 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 	//	ic.logger.WithError(err).Error("Failed to forward to udp")
 	//}
 
-	if err := outbound(data, packet.RemoteIP); err != nil {
+	if err := externalWriter.WriteToVIP(data, packet.RemoteIP); err != nil {
 		ic.logger.WithError(err).Error("Error while forwarding outbound packet")
 		return
 	}

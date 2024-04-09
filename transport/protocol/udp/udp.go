@@ -13,3 +13,10 @@ type Addr struct {
 func (a Addr) String() string {
 	return fmt.Sprintf("%s:%d", a.IP.String(), a.Port)
 }
+
+func (a Addr) NetAddr() net.Addr {
+	return &net.UDPAddr{
+		IP:   a.IP,
+		Port: int(a.Port),
+	}
+}

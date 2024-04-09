@@ -12,7 +12,6 @@ import (
 	"github.com/am6737/nexus/transport/protocol/udp/header"
 	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
-	"io"
 	"net"
 	"runtime"
 )
@@ -27,6 +26,56 @@ type OutboundController struct {
 	localVpnIP  api.VpnIp
 	logger      *logrus.Logger
 	cfg         *config.Config
+	lighthouse  interfaces.LighthouseController
+}
+
+func (oc *OutboundController) WriteToAddr(p []byte, addr net.Addr) error {
+	parseIPAndPort := func(addr net.Addr) (net.IP, uint16) {
+		switch a := addr.(type) {
+		case *net.TCPAddr:
+			return a.IP.To4(), uint16(a.Port)
+		case *net.UDPAddr:
+			return a.IP.To4(), uint16(a.Port)
+		default:
+			// 处理未知类型的 net.Addr
+			return nil, 0
+		}
+	}
+	ip, port := parseIPAndPort(addr)
+	oc.logger.WithField("addr", addr).Info("出站流量 SendToRemote")
+	return oc.outside.WriteTo(p, &udp.Addr{
+		IP:   ip,
+		Port: port,
+	})
+}
+
+func (oc *OutboundController) WriteToVIP(p []byte, vip api.VpnIp) error {
+	messagePacket, err := header.BuildMessagePacket(9527, 111)
+	if err != nil {
+		return err
+	}
+
+	// 创建新的数据包，将头部和数据包拼接
+	p = append(messagePacket, p...)
+
+	host := oc.hosts.QueryVpnIp(vip)
+	if host == nil {
+		for _, lighthouse := range oc.lighthouses {
+			if lighthouse != nil {
+				oc.logger.WithField("目标地址", vip).
+					WithField("灯塔地址", lighthouse.Remote).
+					Info("出站流量转发到灯塔 OutboundController => Lighthouse")
+				return oc.outside.WriteTo(p, lighthouse.Remote)
+			}
+		}
+		return fmt.Errorf("host %s not found", vip)
+	}
+
+	oc.logger.WithField("目标地址", vip).
+		WithField("目标远程地址", host.Remote).
+		WithField("数据包", p).
+		Info("出站流量")
+	return oc.outside.WriteTo(p, host.Remote)
 }
 
 func (oc *OutboundController) SendToRemote(out []byte, addr *udp.Addr) error {
@@ -145,7 +194,7 @@ func (oc *OutboundController) getLighthouses() []*host.HostInfo {
 	return lighthouses
 }
 
-func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.Header, internalWriter io.Writer) {
+func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.Header, internalWriter interfaces.InsideWriter) {
 	pk := &packet.Packet{}
 
 	err := h.Decode(p)
@@ -167,7 +216,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 			WithField("握手数据包", p).
 			WithField("远程地址", addr).
 			Info("收到握手数据包")
-		oc.handleHandshake(pk)
+		oc.handleHandshake(addr, pk, h, p)
 	case header.Message:
 		out := p
 		// 解析数据包
@@ -205,8 +254,8 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 	}
 }
 
-func (oc *OutboundController) handleHandshake(pk *packet.Packet) {
-
+func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
+	oc.lighthouse.HandleRequest(addr, pk.RemoteIP, h, p)
 }
 
 // 更新 remotes 映射表
@@ -219,7 +268,7 @@ func (oc *OutboundController) updateRemotes(pk *packet.Packet, addr *udp.Addr) {
 }
 
 // 处理目标地址是本地VPN地址的情况
-func (oc *OutboundController) handleLocalVpnAddress(p []byte, pk *packet.Packet, internalWriter io.Writer) {
+func (oc *OutboundController) handleLocalVpnAddress(p []byte, pk *packet.Packet, internalWriter interfaces.InsideWriter) {
 	if _, err := internalWriter.Write(p); err != nil {
 		oc.logger.WithError(err).Error("写入数据出错")
 	}
@@ -242,7 +291,7 @@ func (oc *OutboundController) handleLighthouses(p []byte, addr *udp.Addr) {
 }
 
 // Listen 监听出站连接，并根据目标地址将数据包转发到相应的目标
-func (oc *OutboundController) Listen(internalWriter io.Writer) {
+func (oc *OutboundController) Listen(internalWriter interfaces.InsideWriter) {
 	runtime.LockOSThread()
 	oc.outside.ListenOut(func(addr *udp.Addr, out []byte, p []byte, h *header.Header) {
 		oc.handlePacket(addr, p, h, internalWriter)

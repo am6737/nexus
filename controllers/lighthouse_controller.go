@@ -1,10 +1,16 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/am6737/nexus/api"
+	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/host"
+	"github.com/am6737/nexus/transport/protocol/udp"
+	"github.com/am6737/nexus/transport/protocol/udp/header"
+	"github.com/sirupsen/logrus"
 	"log"
 	"sync"
 	"time"
@@ -15,12 +21,7 @@ var (
 	UpdateInterval = 30 * time.Second
 )
 
-type LighthouseController struct {
-	mu          sync.RWMutex
-	hosts       map[api.VpnIp]*host.HostInfo
-	queryQueue  chan api.VpnIp
-	queryWorker *sync.WaitGroup
-}
+var _ interfaces.LighthouseController = &LighthouseController{}
 
 func NewLighthouseController() *LighthouseController {
 	return &LighthouseController{
@@ -28,6 +29,53 @@ func NewLighthouseController() *LighthouseController {
 		queryQueue:  make(chan api.VpnIp, 1000),
 		queryWorker: &sync.WaitGroup{},
 	}
+}
+
+type LighthouseController struct {
+	mu          sync.RWMutex
+	hosts       map[api.VpnIp]*host.HostInfo
+	queryQueue  chan api.VpnIp
+	queryWorker *sync.WaitGroup
+	logger      *logrus.Logger
+
+	ow interfaces.OutsideWriter
+}
+
+func (lc *LighthouseController) HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIp, h *header.Header, p []byte) {
+	switch h.MessageSubtype {
+	case header.HostQuery:
+		lc.handleHostQuery(nil, vpnIp, rAddr)
+	case header.HostQueryReply:
+		lc.handleHostQueryReply(vpnIp, p)
+	case header.HostUpdateNotification:
+		//lc.handleHostUpdateNotification(n, vpnIp)
+	}
+}
+
+func (lc *LighthouseController) handleHostQuery(n interface{}, ip api.VpnIp, addr *udp.Addr) {
+	host, err := lc.Query(ip)
+	if err != nil {
+		lc.logger.WithError(err).Error("LighthouseController handleHostQuery")
+		return
+	}
+	var buf bytes.Buffer
+	h := header.BuildHostQueryReplyPacket(host.LocalIndexId, 0)
+	buf.Write(h)
+	b, err := json.Marshal(host)
+	if err != nil {
+		return
+	}
+	buf.Write(b)
+	lc.ow.WriteToAddr(buf.Bytes(), host.Remote.NetAddr())
+}
+
+func (lc *LighthouseController) handleHostQueryReply(ip api.VpnIp, p []byte) {
+	hi := &host.HostInfo{}
+	if err := json.Unmarshal(p, hi); err != nil {
+		lc.logger.WithError(err).Error("LighthouseController handleHostQueryReply")
+		return
+	}
+	lc.Store(hi)
 }
 
 func (lc *LighthouseController) Start(ctx context.Context) error {
@@ -73,7 +121,7 @@ func (lc *LighthouseController) Query(vpnIP api.VpnIp) (*host.HostInfo, error) {
 		return host, nil
 	}
 	lc.queryQueue <- vpnIP
-	return nil, nil
+	return nil, errors.New("node not found")
 }
 
 func (lc *LighthouseController) processQuery(vpnIP api.VpnIp) {
@@ -110,5 +158,3 @@ func (lc *LighthouseController) Store(info *host.HostInfo) error {
 	log.Printf("Node stored successfully: %+v\n", info)
 	return nil
 }
-
-// 其他方法保持不变

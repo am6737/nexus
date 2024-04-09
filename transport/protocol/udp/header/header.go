@@ -22,6 +22,12 @@ const (
 	Control
 )
 
+const (
+	HostQuery MessageSubType = iota
+	HostQueryReply
+	HostUpdateNotification
+)
+
 var typeMap = map[MessageType]string{
 	Handshake:  "handshake",
 	Message:    "message",
@@ -37,6 +43,21 @@ type Header struct {
 	Reserved       uint16
 	RemoteIndex    uint32
 	MessageCounter uint64
+}
+
+func BuildHostQueryReplyPacket(remoteIndex uint32, messageCounter uint64) []byte {
+	header := &Header{
+		Version:        Version,
+		MessageType:    LightHouse,
+		MessageSubtype: HostQueryReply,
+		Reserved:       0,
+		RemoteIndex:    remoteIndex,
+		MessageCounter: messageCounter,
+	}
+
+	packet := make([]byte, Len)
+	encodedHeader, _ := header.Encode(packet)
+	return encodedHeader
 }
 
 func BuildMessagePacket(remoteIndex uint32, messageCounter uint64) ([]byte, error) {

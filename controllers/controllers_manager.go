@@ -123,9 +123,7 @@ func (c *ControllersManager) Start(ctx context.Context) error {
 		return err
 	}
 
-	go c.Inbound.Listen(func(out []byte, ip api.VpnIp) error {
-		return c.Outbound.Send(out, ip)
-	})
+	go c.Inbound.Listen(c.Outbound)
 
 	go c.Outbound.Listen(c.internalWriter)
 
