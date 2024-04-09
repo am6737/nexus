@@ -197,9 +197,15 @@ func (oc *OutboundController) getLighthouses() []*host.HostInfo {
 func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.Header, internalWriter interfaces.InsideWriter) {
 	pk := &packet.Packet{}
 
-	err := h.Decode(p)
-	if err != nil {
+	if err := h.Decode(p); err != nil {
 		oc.logger.WithError(err).Error("解析数据包头出错")
+		return
+	}
+
+	// 解析数据包
+	// 将incoming参数设置为true
+	if err := utils.ParsePacket(p[header.Len:], true, pk); err != nil {
+		oc.logger.WithError(err).Error("解析数据包出错")
 		return
 	}
 
@@ -213,19 +219,12 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 	switch h.MessageType {
 	case header.Handshake:
 		oc.logger.
-			WithField("握手数据包", p).
+			WithField("握手数据包", pk).
 			WithField("远程地址", addr).
 			Info("收到握手数据包")
 		oc.handleHandshake(addr, pk, h, p)
 	case header.Message:
 		out := p
-		// 解析数据包
-		// 将incoming参数设置为true
-		err = utils.ParsePacket(p[header.Len:], true, pk)
-		if err != nil {
-			oc.logger.WithError(err).Error("解析数据包出错")
-			return
-		}
 		p = p[header.Len:]
 
 		if pk.RemoteIP == oc.localVpnIP {
