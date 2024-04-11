@@ -85,14 +85,27 @@ func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *udp.Addr) {
 	}
 }
 
-func (hm *HostMap) AddHost(vpnIP string, udpAddr *udp.Addr) {
+func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
 	fmt.Printf("AddHost vpnIP => %s addr => %s\n", vpnIP, udpAddr)
-	ip, _ := api.ParseVpnIp(vpnIP)
-	hm.hosts[vpnIP] = &HostInfo{
-		Remote: udpAddr,
-		VpnIp:  ip,
+
+	// 检查是否已存在相同的 vpnIP，如果存在则只更新主机信息
+	if hostInfo, ok := hm.hosts[vpnIP.String()]; ok {
+		hostInfo.Remote = &udp.Addr{
+			IP:   udpAddr.IP,
+			Port: udpAddr.Port,
+		}
+	} else {
+		// 不存在则添加新的主机信息
+		hm.hosts[vpnIP.String()] = &HostInfo{
+			Remote: &udp.Addr{
+				IP:   udpAddr.IP,
+				Port: udpAddr.Port,
+			},
+			Remotes: RemoteList{},
+			VpnIp:   vpnIP,
+		}
 	}
 }
 
