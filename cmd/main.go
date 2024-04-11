@@ -27,6 +27,7 @@ func main() {
 
 	logger := logrus.New()
 	logger.Out = os.Stdout
+	logger.SetLevel(logrus.InfoLevel)
 
 	// 创建新的 DarwinTun 实例
 	tunDevice, err := tun.NewDeviceFromConfig(cfg, nil)
