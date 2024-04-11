@@ -102,6 +102,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		udpServer,
 		config.Handshake,
 		localVpnIP,
+		lighthouses,
 	)
 
 	lighthouseController := NewLighthouseController(

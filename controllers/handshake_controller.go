@@ -57,7 +57,7 @@ type HandshakeController struct {
 }
 
 // NewHandshakeController 创建一个新的 HandshakeController 实例
-func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, outside udp.Conn, config config.HandshakeConfig, localVIP api.VpnIp) *HandshakeController {
+func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, outside udp.Conn, config config.HandshakeConfig, localVIP api.VpnIp, lightHouses map[api.VpnIp]*host.HostInfo) *HandshakeController {
 	index, err := generateIndex()
 	if err != nil {
 		panic(err)
@@ -71,7 +71,8 @@ func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, li
 		logger:          logger,
 		mainHostMap:     mainHostMap,
 		//lightHouse:      lightHouse,
-		outside: outside,
+		lightHouses: lightHouses,
+		outside:     outside,
 		//messageMetrics:  config.MessageMetrics,
 		localIndexID: index,
 	}
@@ -133,6 +134,10 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 			hc.logger.WithError(err).Error("Failed to build handshake and host sync packet")
 			continue
 		}
+		hc.logger.
+			WithField("lighthouse", lightHouse.VpnIp).
+			WithField("p", p).
+			Info("发送灯塔同步请求")
 		if err := hc.outside.WriteTo(p, lightHouse.Remote); err != nil {
 			hc.logger.WithError(err).Error("Failed to send handshake packet to lighthouse")
 		}

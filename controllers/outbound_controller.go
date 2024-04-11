@@ -207,7 +207,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		return
 	}
 
-	fmt.Println("p[header.Len:] => ", p[header.Len:])
+	//fmt.Println("p[header.Len:] => ", p[header.Len:])
 
 	// 解析数据包
 	// 将incoming参数设置为true
@@ -262,6 +262,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
 	oc.hosts.AddHost(pk.LocalIP, addr)
+	fmt.Println("h.MessageSubtype => ", h.MessageSubtype)
 	switch h.MessageSubtype {
 	case header.HostSync:
 		hp, _ := json.Marshal(oc.hosts)
