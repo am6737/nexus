@@ -137,7 +137,7 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 		}
 		hc.logger.
 			WithField("lighthouse", lightHouse.VpnIp).
-			WithField("p", p).
+			WithField("p", string(p)).
 			Info("发送灯塔同步请求")
 		if err := hc.outside.WriteTo(p, lightHouse.Remote); err != nil {
 			hc.logger.WithError(err).Error("Failed to send handshake packet to lighthouse")
@@ -187,8 +187,10 @@ func (hc *HandshakeController) Handshake(vip api.VpnIp) error {
 		HostInfo:  hostInfo,
 	}
 
+	fmt.Println("handshakeHostInfo => ", handshakeHostInfo)
+
 	// 将新的握手主机信息添加到列表中
-	hc.hosts[vip] = handshakeHostInfo
+	//hc.hosts[vip] = handshakeHostInfo
 
 	// 触发发送握手消息
 	select {

@@ -79,7 +79,6 @@ type ifreqMTU struct {
 // defaultMTU is the default Maximum Transmission Unit (MTU) of the device.
 // It returns a Device ifce and an error if any.
 func newTun(name string, cidr *net.IPNet, mtu int, txQueueLen int, multiqueue bool) (Device, error) {
-	fmt.Println("cidr => ", cidr)
 	var fd int
 	var err error
 	ifIndex := -1
@@ -274,9 +273,9 @@ func (t *tun) Up() error {
 	copy(routeAddr.IP[:], addr[:])
 	copy(maskAddr.IP[:], mask[:])
 
-	fmt.Println("routeAddr => ", routeAddr)
-	fmt.Println("maskAddr => ", maskAddr)
-	fmt.Println("linkAddr => ", linkAddr)
+	//fmt.Println("routeAddr => ", routeAddr)
+	//fmt.Println("maskAddr => ", maskAddr)
+	//fmt.Println("linkAddr => ", linkAddr)
 
 	// Add the route to the routing table
 	if err = addRoute(routeSock, routeAddr, maskAddr, linkAddr); err != nil {

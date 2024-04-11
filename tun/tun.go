@@ -16,8 +16,6 @@ func NewDeviceFromConfig(c *config.Config, l *logrus.Logger) (Device, error) {
 		return nil, err
 	}
 
-	fmt.Println("tunCidr => ", tunCidr)
-
 	switch {
 	case c.Tun.Disabled:
 		//tun := newDisabledTun(tunCidr, c.GetInt("tun.tx_queue", 500), c.GetBool("stats.message_metrics", false), l)

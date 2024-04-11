@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/host"
@@ -96,7 +95,7 @@ func (lc *LighthouseController) handleHostQueryReply(ip api.VpnIp, p []byte) {
 		WithField("vpnIp", ip).
 		WithField("host", hi).
 		Info("收到节点查询回复")
-	lc.Store(hi)
+	//lc.Store(hi)
 }
 
 func (lc *LighthouseController) Start(ctx context.Context) error {
@@ -138,7 +137,6 @@ func (lc *LighthouseController) startQueryWorker(ctx context.Context) {
 }
 
 func (lc *LighthouseController) Query(vpnIP api.VpnIp) (*host.HostInfo, error) {
-	fmt.Println("lc.host.Hosts => ", lc.host.Hosts)
 	if host, ok := lc.host.Hosts[vpnIP]; ok {
 		return host, nil
 	}

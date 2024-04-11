@@ -48,10 +48,6 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 	}
 	udpServer.ReloadConfig(config)
 
-	addr, _ := udpServer.LocalAddr()
-
-	fmt.Println("udpServer => ", addr)
-
 	// Initialize inbound controller
 	inboundLogger := logger.WithField("controller", "Inbound")
 	inboundController := &InboundController{
