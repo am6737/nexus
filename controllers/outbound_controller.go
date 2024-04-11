@@ -214,12 +214,12 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		return
 	}
 
-	//oc.logger.WithField("远程地址", addr).
-	//	WithField("源地址", pk.LocalIP).
-	//	WithField("目标地址", pk.RemoteIP).
-	//	WithField("数据包", pk).
-	//	//WithField("原始数据", p).
-	//	Info("入站流量")
+	oc.logger.WithField("远程地址", addr).
+		WithField("源地址", pk.LocalIP).
+		WithField("目标地址", pk.RemoteIP).
+		WithField("数据包", pk).
+		//WithField("原始数据", p).
+		Info("入站流量")
 
 	switch h.MessageType {
 	case header.Handshake:
