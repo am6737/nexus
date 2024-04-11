@@ -85,13 +85,14 @@ func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *udp.Addr) {
 	}
 }
 
-func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
+func (hm *HostMap) AddHost(vpnIP string, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
 	fmt.Printf("AddHost vpnIP => %s addr => %s\n", vpnIP, udpAddr)
-	hm.hosts[vpnIP.String()] = &HostInfo{
+	ip, _ := api.ParseVpnIp(vpnIP)
+	hm.hosts[vpnIP] = &HostInfo{
 		Remote: udpAddr,
-		VpnIp:  vpnIP,
+		VpnIp:  ip,
 	}
 }
 
