@@ -73,6 +73,15 @@ func (lc *LighthouseController) handleHostQuery(n interface{}, ip api.VpnIp, add
 		return
 	}
 	buf.Write(b)
+	lc.logger.
+		WithField("vpnIp", ip).
+		WithField("addr", addr).
+		Info("收到节点查询请求")
+	lc.logger.
+		WithField("vpnIp", ip).
+		WithField("p", buf.Bytes()).
+		WithField("addr", host.Remote.NetAddr()).
+		Info("发送节点查询结果")
 	lc.ow.WriteToAddr(buf.Bytes(), host.Remote.NetAddr())
 }
 
