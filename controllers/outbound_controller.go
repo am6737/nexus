@@ -275,10 +275,8 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 	case header.HostSyncReply:
 		oc.logger.
 			WithField("pk", pk).
-			//WithField("p", p).
 			Info("收到灯塔同步回复数据包")
 		p = p[header.Len+20:]
-		fmt.Println("p => ", string(p))
 		var hs map[api.VpnIp]*host.HostInfo
 		if err := json.Unmarshal(p, &hs); err != nil {
 			oc.logger.WithError(err).Error("解析数据包出错")
@@ -288,9 +286,6 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			if i == oc.localVpnIP {
 				continue
 			}
-			fmt.Println("i => ", i)
-			fmt.Println("i2 ip => ", i2.VpnIp)
-			fmt.Println("i2.Remote => ", i2.Remote)
 			oc.hosts.AddHost(i, i2.Remote)
 		}
 	}
