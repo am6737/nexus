@@ -1,6 +1,7 @@
 package host
 
 import (
+	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/transport/protocol/udp/header"
@@ -79,6 +80,7 @@ func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *udp.Addr) {
 func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
+	fmt.Printf("AddHost vpnIP:%s addr:%s\n", vpnIP, udpAddr)
 	hm.Hosts[vpnIP] = &HostInfo{
 		Remote: &udp.Addr{
 			IP:   udpAddr.IP,

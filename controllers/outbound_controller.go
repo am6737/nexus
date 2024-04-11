@@ -259,10 +259,10 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 }
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
-	oc.hosts.AddHost(pk.RemoteIP, addr)
-	for i, i2 := range oc.hosts.Hosts {
-		fmt.Printf("host => %s info => %v \n", i, i2)
-	}
+	//oc.hosts.AddHost(pk.RemoteIP, addr)
+	//for i, i2 := range oc.hosts.Hosts {
+	//	fmt.Printf("host => %s info => %v \n", i, i2)
+	//}
 	switch h.MessageSubtype {
 	case header.HostSync:
 		hp, _ := json.Marshal(oc.hosts.Hosts)
