@@ -271,6 +271,11 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			oc.logger.WithError(err).Error("构建握手数据包出错")
 			return
 		}
+		oc.logger.
+			WithField("RemoteIP", pk.RemoteIP).
+			WithField("addr", addr).
+			WithField("p", replyPacket).
+			Info("发送主机同步回复数据包")
 		if err := oc.outside.WriteTo(replyPacket, addr); err != nil {
 			oc.logger.WithError(err).Error("数据转发到远程")
 		}

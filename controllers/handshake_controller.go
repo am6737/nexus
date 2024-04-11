@@ -124,6 +124,7 @@ func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 }
 
 func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
+	time.Sleep(10 * time.Second)
 	for _, lightHouse := range hc.lightHouses {
 		if lightHouse.VpnIp == hc.localVIP {
 			hc.logger.Warn("Lighthouse is localhost")
