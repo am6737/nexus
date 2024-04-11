@@ -87,6 +87,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 			}
 			lighthouses[vpnIp] = &host.HostInfo{
 				Remote: r,
+				VpnIp:  vpnIp,
 			}
 			hosts.AddHost(vpnIp, r)
 		}
