@@ -125,6 +125,7 @@ func (hm *HostMap) GetAllHostMap() map[api.VpnIp]*HostInfo {
 	defer hm.RUnlock()
 	hosts := make(map[api.VpnIp]*HostInfo)
 	for vpnIP, hostInfo := range hm.hosts {
+		fmt.Printf("GetAllHostMap VPN IP: %s, Host Info: %v\n", vpnIP, hostInfo)
 		hosts[vpnIP] = hostInfo
 	}
 	return hosts

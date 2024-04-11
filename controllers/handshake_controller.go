@@ -117,6 +117,7 @@ func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 						hc.logger.Errorf("Error initiating handshake for %s: %v", vip, err)
 					}
 				}
+				return
 				//hc.RUnlock()
 			}
 		}

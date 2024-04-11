@@ -207,8 +207,6 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		return
 	}
 
-	//fmt.Println("p[header.Len:] => ", p[header.Len:])
-
 	// 解析数据包
 	// 将incoming参数设置为true
 	if err := utils.ParsePacket(p[header.Len:], true, pk); err != nil {
@@ -216,12 +214,12 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		return
 	}
 
-	oc.logger.WithField("远程地址", addr).
-		WithField("源地址", pk.LocalIP).
-		WithField("目标地址", pk.RemoteIP).
-		WithField("数据包", pk).
-		//WithField("原始数据", p).
-		Info("入站流量")
+	//oc.logger.WithField("远程地址", addr).
+	//	WithField("源地址", pk.LocalIP).
+	//	WithField("目标地址", pk.RemoteIP).
+	//	WithField("数据包", pk).
+	//	//WithField("原始数据", p).
+	//	Info("入站流量")
 
 	switch h.MessageType {
 	case header.Handshake:
@@ -252,7 +250,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		}
 	case header.LightHouse:
 		// 处理目标地址是灯塔的情况
-		oc.handleLighthouses(addr, pk, h, p)
+		//oc.handleLighthouses(addr, pk, h, p)
 	default:
 
 	}
@@ -260,7 +258,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
 	oc.hosts.AddHost(pk.RemoteIP, addr)
-	oc.hosts.PrintHosts()
+	//oc.hosts.PrintHosts()
 	switch h.MessageSubtype {
 	case header.HostSync:
 		hp, _ := json.Marshal(oc.hosts.GetAllHostMap())
@@ -293,8 +291,9 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 				continue
 			}
 			fmt.Println("i => ", i)
+			fmt.Println("i2 ip => ", i2.VpnIp)
 			fmt.Println("i2.Remote => ", i2.Remote)
-			oc.hosts.UpdateHost(i, i2.Remote)
+			oc.hosts.AddHost(i, i2.Remote)
 		}
 	}
 }
