@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/netip"
@@ -107,4 +108,19 @@ func ubtoa(dst []byte, start int, v byte) int {
 	dst[start+1] = (v/10)%10 + '0'
 	dst[start] = v/100 + '0'
 	return 3
+}
+
+func (ip *VpnIp) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	parsedIp, err := ParseVpnIp(s)
+	if err != nil {
+		return err
+	}
+
+	*ip = parsedIp
+	return nil
 }

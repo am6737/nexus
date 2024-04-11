@@ -265,6 +265,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 	fmt.Println("h.MessageSubtype => ", h.MessageSubtype)
 	switch h.MessageSubtype {
 	case header.HostSync:
+		fmt.Println("oc.hosts.Hosts => ", oc.hosts.Hosts)
 		hp, _ := json.Marshal(oc.hosts.Hosts)
 		replyPacket, err := oc.buildHandshakeHostSyncReplyPacket(pk.RemoteIP, hp)
 		if err != nil {
@@ -275,6 +276,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			WithField("RemoteIP", pk.RemoteIP).
 			WithField("addr", addr).
 			WithField("p", replyPacket).
+			WithField("hp", hp).
 			Info("发送主机同步回复数据包")
 		if err := oc.outside.WriteTo(replyPacket, addr); err != nil {
 			oc.logger.WithError(err).Error("数据转发到远程")
@@ -285,6 +287,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			WithField("p", p).
 			Info("收到灯塔同步回复数据包")
 		p = p[header.Len+20:]
+		fmt.Println("p = p[header.Len+20:] => ", p)
 		var hs map[api.VpnIp]*host.HostInfo
 		if err := json.Unmarshal(p, &hs); err != nil {
 			oc.logger.WithError(err).Error("解析数据包出错")
