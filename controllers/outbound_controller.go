@@ -250,8 +250,6 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 				oc.logger.WithError(err).WithField("addr", addr).Error("数据转发到远程")
 			}
 		}
-		// 更新 remotes 映射表
-		oc.updateRemotes(pk, addr)
 	case header.LightHouse:
 		// 处理目标地址是灯塔的情况
 		oc.handleLighthouses(addr, pk, h, p)
@@ -262,11 +260,11 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
 	oc.hosts.AddHost(pk.RemoteIP, addr)
-	fmt.Println("oc.hosts => ", oc.hosts.Hosts)
-	fmt.Println("h.MessageSubtype => ", h.MessageSubtype)
+	for i, i2 := range oc.hosts.Hosts {
+		fmt.Printf("host => %s info => %v \n", i, i2)
+	}
 	switch h.MessageSubtype {
 	case header.HostSync:
-		fmt.Println("oc.hosts.Hosts => ", oc.hosts.Hosts)
 		hp, _ := json.Marshal(oc.hosts.Hosts)
 		replyPacket, err := oc.buildHandshakeHostSyncReplyPacket(pk.RemoteIP, hp)
 		if err != nil {
@@ -288,12 +286,18 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			WithField("p", p).
 			Info("收到灯塔同步回复数据包")
 		p = p[header.Len+20:]
+		fmt.Println("p => ", string(p))
 		var hs map[api.VpnIp]*host.HostInfo
 		if err := json.Unmarshal(p, &hs); err != nil {
 			oc.logger.WithError(err).Error("解析数据包出错")
 			return
 		}
 		for i, i2 := range hs {
+			if i == oc.localVpnIP {
+				continue
+			}
+			fmt.Println("i => ", i)
+			fmt.Println("i2.Remote => ", i2.Remote)
 			oc.hosts.UpdateHost(i, i2.Remote)
 		}
 	}
@@ -324,7 +328,7 @@ func (oc *OutboundController) updateRemotes(pk *packet.Packet, addr *udp.Addr) {
 	//	IP:   addr.IP,
 	//	Port: int(addr.Port),
 	//}
-	oc.hosts.UpdateHost(pk.RemoteIP, addr)
+	//oc.hosts.UpdateHost(pk.RemoteIP, addr)
 }
 
 // 处理目标地址是本地VPN地址的情况
