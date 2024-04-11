@@ -172,7 +172,10 @@ func (oc *OutboundController) configureStaticHostMap() {
 			continue
 		}
 		vpnIp := api.Ip2VpnIp(ip)
-		oc.hosts.AddHost(vpnIp, udpAddr)
+		oc.hosts.AddHost(vpnIp, &udp.Addr{
+			IP:   udpAddr.IP,
+			Port: uint16(udpAddr.Port),
+		})
 	}
 }
 
@@ -249,14 +252,14 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		oc.updateRemotes(pk, addr)
 	case header.LightHouse:
 		// 处理目标地址是灯塔的情况
-		//oc.handleLighthouses(p, addr)
+		oc.handleLighthouses(addr, pk, h, p)
 	default:
 
 	}
 }
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
-	oc.lighthouse.HandleRequest(addr, pk.LocalIP, h, p)
+	oc.hosts.AddHost(pk.LocalIP, addr)
 }
 
 // 更新 remotes 映射表
@@ -276,19 +279,20 @@ func (oc *OutboundController) handleLocalVpnAddress(p []byte, pk *packet.Packet,
 }
 
 // 处理目标地址是灯塔的情况
-func (oc *OutboundController) handleLighthouses(p []byte, addr *udp.Addr) {
-	for _, lighthouse := range oc.lighthouses {
-		if lighthouse != nil {
-			oc.logger.WithField("目标地址", addr).
-				WithField("灯塔地址", lighthouse.Remote).
-				Info("出站流量转发到灯塔")
-
-			// 如果本地没有远程连接，将数据包转发到灯塔
-			if err := oc.outside.WriteTo(p, lighthouse.Remote); err != nil {
-				oc.logger.WithError(err).Error("数据转发到灯塔出错")
-			}
-		}
-	}
+func (oc *OutboundController) handleLighthouses(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
+	oc.lighthouse.HandleRequest(addr, pk.LocalIP, h, p)
+	//for _, lighthouse := range oc.lighthouses {
+	//	if lighthouse != nil {
+	//		oc.logger.WithField("目标地址", addr).
+	//			WithField("灯塔地址", lighthouse.Remote).
+	//			Info("出站流量转发到灯塔")
+	//
+	//		// 如果本地没有远程连接，将数据包转发到灯塔
+	//		if err := oc.outside.WriteTo(p, lighthouse.Remote); err != nil {
+	//			oc.logger.WithError(err).Error("数据转发到灯塔出错")
+	//		}
+	//	}
+	//}
 }
 
 // Listen 监听出站连接，并根据目标地址将数据包转发到相应的目标
