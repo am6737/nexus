@@ -89,7 +89,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 				Remote: r,
 				VpnIp:  vpnIp,
 			}
-			hosts.AddHost(vpnIp, r)
+			hosts.AddHost(vpnIp.String(), r)
 		}
 	}
 
