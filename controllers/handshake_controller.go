@@ -81,8 +81,8 @@ func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, li
 // Start 启动 HandshakeController，监听发送握手消息的触发通道和定时器
 func (hc *HandshakeController) Start(ctx context.Context) error {
 	hc.logger.Info("Starting handshake controller")
-	go hc.handshakeAllHosts(ctx)
-	go hc.syncLighthouse(ctx)
+	hc.handshakeAllHosts(ctx)
+	hc.syncLighthouse(ctx)
 	go func() {
 		for {
 			select {
@@ -125,25 +125,36 @@ func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 }
 
 func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
-	time.Sleep(10 * time.Second)
-	for _, lightHouse := range hc.lightHouses {
-		if lightHouse.VpnIp == hc.localVIP {
-			hc.logger.Warn("Lighthouse is localhost")
-			continue
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				for _, lightHouse := range hc.lightHouses {
+					if lightHouse.VpnIp == hc.localVIP {
+						hc.logger.Warn("Lighthouse is localhost")
+						continue
+					}
+					p, err := hc.buildHandshakeAndHostSyncPacket(lightHouse.VpnIp)
+					if err != nil {
+						hc.logger.WithError(err).Error("Failed to build handshake and host sync packet")
+						continue
+					}
+					hc.logger.
+						WithField("lighthouse", lightHouse.VpnIp).
+						WithField("p", string(p)).
+						Info("发送灯塔同步请求")
+					if err := hc.outside.WriteTo(p, lightHouse.Remote); err != nil {
+						hc.logger.WithError(err).Error("Failed to send handshake packet to lighthouse")
+					}
+				}
+			}
 		}
-		p, err := hc.buildHandshakeAndHostSyncPacket(lightHouse.VpnIp)
-		if err != nil {
-			hc.logger.WithError(err).Error("Failed to build handshake and host sync packet")
-			continue
-		}
-		hc.logger.
-			WithField("lighthouse", lightHouse.VpnIp).
-			WithField("p", string(p)).
-			Info("发送灯塔同步请求")
-		if err := hc.outside.WriteTo(p, lightHouse.Remote); err != nil {
-			hc.logger.WithError(err).Error("Failed to send handshake packet to lighthouse")
-		}
-	}
+	}()
 }
 
 func (hc *HandshakeController) buildHandshakeAndHostSyncPacket(vip api.VpnIp) ([]byte, error) {
