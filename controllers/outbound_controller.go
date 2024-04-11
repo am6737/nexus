@@ -294,7 +294,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			return
 		}
 		for i, i2 := range hs {
-			fmt.Printf("节点地址: %s info: %v", i, i2)
+			oc.hosts.UpdateHost(i, i2.Remote)
 		}
 	}
 }
@@ -320,11 +320,11 @@ func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIp, d
 
 // 更新 remotes 映射表
 func (oc *OutboundController) updateRemotes(pk *packet.Packet, addr *udp.Addr) {
-	udpAddr := &net.UDPAddr{
-		IP:   addr.IP,
-		Port: int(addr.Port),
-	}
-	oc.hosts.UpdateHost(pk.RemoteIP, udpAddr)
+	//udpAddr := &net.UDPAddr{
+	//	IP:   addr.IP,
+	//	Port: int(addr.Port),
+	//}
+	oc.hosts.UpdateHost(pk.RemoteIP, addr)
 }
 
 // 处理目标地址是本地VPN地址的情况

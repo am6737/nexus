@@ -56,7 +56,7 @@ func (hm *HostMap) DeleteHost(vip api.VpnIp) {
 	delete(hm.Hosts, vip)
 }
 
-func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *net.UDPAddr) {
+func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
 	if hostInfo, ok := hm.Hosts[vip]; ok {
