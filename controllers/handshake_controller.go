@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/am6737/nexus/api"
+	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
 	"github.com/am6737/nexus/host"
 	pmetrics "github.com/am6737/nexus/metrics"
@@ -32,6 +33,8 @@ type HandshakeHostInfo struct {
 	PacketStore []*host.CachedPacket // 待发送的握手数据包
 	HostInfo    *host.HostInfo       // 主机信息
 }
+
+var _ interfaces.HandshakeController = &HandshakeController{}
 
 // HandshakeController 实现 HandshakeController 接口的握手控制器
 type HandshakeController struct {
