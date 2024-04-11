@@ -175,7 +175,7 @@ func (lc *LighthouseController) Store(info *host.HostInfo) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	lc.host.UpdateHost(info.VpnIp, info.Remote)
+	//lc.host.UpdateHost(info.VpnIp, info.Remote)
 	log.Printf("Node stored successfully: %+v\n", info)
 	return nil
 }
