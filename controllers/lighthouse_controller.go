@@ -82,6 +82,10 @@ func (lc *LighthouseController) handleHostQueryReply(ip api.VpnIp, p []byte) {
 		lc.logger.WithError(err).Error("LighthouseController handleHostQueryReply")
 		return
 	}
+	lc.logger.
+		WithField("vpnIp", ip).
+		WithField("host", hi).
+		Info("收到节点查询回复")
 	lc.Store(hi)
 }
 

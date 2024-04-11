@@ -256,7 +256,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 }
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
-	oc.lighthouse.HandleRequest(addr, pk.RemoteIP, h, p)
+	oc.lighthouse.HandleRequest(addr, pk.LocalIP, h, p)
 }
 
 // 更新 remotes 映射表
