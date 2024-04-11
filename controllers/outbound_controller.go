@@ -220,7 +220,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		WithField("源地址", pk.LocalIP).
 		WithField("目标地址", pk.RemoteIP).
 		WithField("数据包", pk).
-		WithField("原始数据", p).
+		//WithField("原始数据", p).
 		Info("入站流量")
 
 	switch h.MessageType {
@@ -259,10 +259,10 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 }
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
-	//oc.hosts.AddHost(pk.RemoteIP, addr)
-	//for i, i2 := range oc.hosts.Hosts {
-	//	fmt.Printf("host => %s info => %v \n", i, i2)
-	//}
+	oc.hosts.AddHost(pk.RemoteIP, addr)
+	for i, i2 := range oc.hosts.Hosts {
+		fmt.Printf("host => %s info => %v \n", i, i2)
+	}
 	switch h.MessageSubtype {
 	case header.HostSync:
 		hp, _ := json.Marshal(oc.hosts.Hosts)
@@ -274,8 +274,6 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 		oc.logger.
 			WithField("RemoteIP", pk.RemoteIP).
 			WithField("addr", addr).
-			WithField("p", replyPacket).
-			WithField("hp", hp).
 			Info("发送主机同步回复数据包")
 		if err := oc.outside.WriteTo(replyPacket, addr); err != nil {
 			oc.logger.WithError(err).Error("数据转发到远程")
@@ -283,7 +281,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 	case header.HostSyncReply:
 		oc.logger.
 			WithField("pk", pk).
-			WithField("p", p).
+			//WithField("p", p).
 			Info("收到灯塔同步回复数据包")
 		p = p[header.Len+20:]
 		fmt.Println("p => ", string(p))
