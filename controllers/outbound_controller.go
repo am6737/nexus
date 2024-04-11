@@ -265,7 +265,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 	fmt.Println("h.MessageSubtype => ", h.MessageSubtype)
 	switch h.MessageSubtype {
 	case header.HostSync:
-		hp, _ := json.Marshal(oc.hosts)
+		hp, _ := json.Marshal(oc.hosts.Hosts)
 		replyPacket, err := oc.buildHandshakeHostSyncReplyPacket(pk.RemoteIP, hp)
 		if err != nil {
 			oc.logger.WithError(err).Error("构建握手数据包出错")
@@ -284,6 +284,15 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			WithField("pk", pk).
 			WithField("p", p).
 			Info("收到灯塔同步回复数据包")
+		p = p[header.Len+20:]
+		var hs map[api.VpnIp]*host.HostInfo
+		if err := json.Unmarshal(p, &hs); err != nil {
+			oc.logger.WithError(err).Error("解析数据包出错")
+			return
+		}
+		for i, i2 := range hs {
+			fmt.Printf("节点地址: %s info: %v", i, i2)
+		}
 	}
 }
 
@@ -296,6 +305,8 @@ func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIp, d
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println("pv4Packet => ", len(pv4Packet))
 
 	var buf bytes.Buffer
 	buf.Write(handshakePacket)
