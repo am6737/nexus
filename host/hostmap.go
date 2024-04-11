@@ -8,7 +8,6 @@ import (
 	"github.com/flynn/noise"
 	"github.com/sirupsen/logrus"
 	"net"
-	"runtime/debug"
 	"sync"
 	"sync/atomic"
 )
@@ -90,7 +89,6 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
 	fmt.Printf("AddHost vpnIP:%s addr:%s\n", vpnIP, udpAddr)
-	fmt.Println("Stack Trace:", string(debug.Stack()))
 	hm.hosts[vpnIP] = &HostInfo{
 		Remote: &udp.Addr{
 			IP:   udpAddr.IP,
