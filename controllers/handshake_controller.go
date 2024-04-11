@@ -102,8 +102,8 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 	// 定期对所有主机进行握手
 	go func() {
-		//ticker := time.NewTicker(5 * time.Second)
-		ticker := time.NewTicker(5 * time.Hour)
+		ticker := time.NewTicker(5 * time.Second)
+		//ticker := time.NewTicker(5 * time.Hour)
 		defer ticker.Stop()
 
 		for {
