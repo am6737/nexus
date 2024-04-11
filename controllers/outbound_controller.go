@@ -288,7 +288,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 }
 
 func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIp, data []byte) ([]byte, error) {
-	handshakePacket, err := header.BuildHandshakePacket(0, header.HostQueryReply, 0)
+	handshakePacket, err := header.BuildHandshakePacket(0, header.HostSyncReply, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +300,6 @@ func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIp, d
 	var buf bytes.Buffer
 	buf.Write(handshakePacket)
 	buf.Write(pv4Packet)
-	//additionalData := make([]byte, 4)
 	buf.Write(data)
 	return buf.Bytes(), nil
 }
