@@ -129,7 +129,7 @@ func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 
 func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 	go func() {
-		ticker := time.NewTicker(10 * time.Second)
+		ticker := time.NewTicker(60 * time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -148,8 +148,9 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 						continue
 					}
 					hc.logger.
+						WithField("localVIP", hc.localVIP).
 						WithField("lighthouse", lightHouse.VpnIp).
-						Info("发送灯塔同步请求")
+						Debug("发送灯塔同步请求")
 					if err := hc.outside.WriteTo(p, lightHouse.Remote); err != nil {
 						hc.logger.WithError(err).Error("Failed to send handshake packet to lighthouse")
 					}

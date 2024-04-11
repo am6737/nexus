@@ -350,7 +350,7 @@ func (oc *OutboundController) Listen(internalWriter interfaces.InsideWriter) {
 			Port: addr.Port,
 		}
 		copy(copiedAddr.IP, addr.IP)
-		go oc.handlePacket(copiedAddr, p, h, internalWriter)
+		oc.handlePacket(copiedAddr, p, h, internalWriter)
 	})
 }
 
