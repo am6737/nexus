@@ -47,6 +47,7 @@ type HandshakeController struct {
 	messageMetrics  *pmetrics.MessageMetrics         // 消息统计
 	outside         udp.Conn                         // 外部连接
 	mainHostMap     *host.HostMap                    // 主机地图
+	lightHouses     map[api.VpnIp]*host.HostInfo
 	//lightHouse      *LightHouse                      // 光明之屋
 	//f               *Interface                       // 接口
 	metricInitiated metrics.Counter // 握手初始化计数器
@@ -80,6 +81,7 @@ func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, li
 func (hc *HandshakeController) Start(ctx context.Context) error {
 	hc.logger.Info("Starting handshake controller")
 	go hc.handshakeAllHosts(ctx)
+	go hc.syncLighthouse(ctx)
 	go func() {
 		for {
 			select {
@@ -99,7 +101,8 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 	// 定期对所有主机进行握手
 	go func() {
-		ticker := time.NewTicker(5 * time.Second)
+		//ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(5 * time.Hour)
 		defer ticker.Stop()
 
 		for {
@@ -117,6 +120,42 @@ func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 			}
 		}
 	}()
+}
+
+func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
+	for _, lightHouse := range hc.lightHouses {
+		if lightHouse.VpnIp == hc.localVIP {
+			hc.logger.Warn("Lighthouse is localhost")
+			continue
+		}
+		p, err := hc.buildHandshakeAndHostSyncPacket(lightHouse.VpnIp)
+		if err != nil {
+			hc.logger.WithError(err).Error("Failed to build handshake and host sync packet")
+			continue
+		}
+		if err := hc.outside.WriteTo(p, lightHouse.Remote); err != nil {
+			hc.logger.WithError(err).Error("Failed to send handshake packet to lighthouse")
+		}
+	}
+}
+
+func (hc *HandshakeController) buildHandshakeAndHostSyncPacket(vip api.VpnIp) ([]byte, error) {
+	handshakePacket, err := generateHandshakeAndHostSyncPacket(hc.localIndexID)
+	if err != nil {
+		return nil, err
+	}
+
+	pv4Packet, err := packet.BuildIPv4Packet(hc.localVIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	buf.Write(handshakePacket)
+	buf.Write(pv4Packet)
+	additionalData := make([]byte, 4)
+	buf.Write(additionalData)
+	return buf.Bytes(), nil
 }
 
 // Handshake 实现 HandshakeController 接口，启动针对指定 VPN IP 的握手过程
@@ -172,7 +211,7 @@ func (hc *HandshakeController) handleOutbound(vpnIP api.VpnIp, lighthouseTrigger
 	}
 
 	// 生成握手消息
-	handshakePacket, err := generateHandshakePacket(hc.localIndexID)
+	handshakePacket, err := generateHandshakeAndHostSyncPacket(hc.localIndexID)
 	if err != nil {
 		hc.logger.Errorf("failed to generate handshake packet: %v", err)
 		return
@@ -248,7 +287,12 @@ func (hc *HandshakeController) deleteHandshakeInfo(vpnIP api.VpnIp) {
 
 // generateHandshakePacket 生成握手消息
 func generateHandshakePacket(localIndexID uint32) ([]byte, error) {
-	return header.BuildHandshakePacket(localIndexID, 0)
+	return header.BuildHandshakePacket(localIndexID, 0, 0)
+}
+
+// generateHandshakeAndHostSyncPacket 生成握手和同步节点消息
+func generateHandshakeAndHostSyncPacket(localIndexID uint32) ([]byte, error) {
+	return header.BuildHandshakePacket(localIndexID, header.HostSync, 0)
 }
 
 // generateIndex 生成一个唯一的本地索引 ID

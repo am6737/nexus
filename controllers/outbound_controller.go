@@ -1,7 +1,9 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
@@ -260,6 +262,41 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
 	oc.hosts.AddHost(pk.LocalIP, addr)
+	switch h.MessageSubtype {
+	case header.HostSync:
+		hp, _ := json.Marshal(oc.hosts)
+		replyPacket, err := oc.buildHandshakeHostSyncReplyPacket(pk.RemoteIP, hp)
+		if err != nil {
+			oc.logger.WithError(err).Error("构建握手数据包出错")
+			return
+		}
+		if err := oc.outside.WriteTo(replyPacket, addr); err != nil {
+			oc.logger.WithError(err).Error("数据转发到远程")
+		}
+	case header.HostSyncReply:
+		oc.logger.
+			WithField("pk", pk).
+			WithField("p", p).
+			Info("收到灯塔同步回复数据包")
+	}
+}
+
+func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIp, data []byte) ([]byte, error) {
+	handshakePacket, err := header.BuildHandshakePacket(0, header.HostQueryReply, 0)
+	if err != nil {
+		return nil, err
+	}
+	pv4Packet, err := packet.BuildIPv4Packet(oc.localVpnIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	buf.Write(handshakePacket)
+	buf.Write(pv4Packet)
+	//additionalData := make([]byte, 4)
+	buf.Write(data)
+	return buf.Bytes(), nil
 }
 
 // 更新 remotes 映射表

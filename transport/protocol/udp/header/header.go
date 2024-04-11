@@ -26,6 +26,8 @@ const (
 	HostQuery MessageSubType = iota
 	HostQueryReply
 	HostUpdateNotification
+	HostSync
+	HostSyncReply
 )
 
 var typeMap = map[MessageType]string{
@@ -79,11 +81,11 @@ func BuildMessagePacket(remoteIndex uint32, messageCounter uint64) ([]byte, erro
 	return encodedHeader, nil
 }
 
-func BuildHandshakePacket(remoteIndex uint32, messageCounter uint64) ([]byte, error) {
+func BuildHandshakePacket(remoteIndex uint32, ms MessageSubType, messageCounter uint64) ([]byte, error) {
 	header := &Header{
 		Version:        Version,
 		MessageType:    Handshake,
-		MessageSubtype: 0,
+		MessageSubtype: ms,
 		Reserved:       0,
 		RemoteIndex:    remoteIndex,
 		MessageCounter: messageCounter,
