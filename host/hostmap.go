@@ -8,6 +8,7 @@ import (
 	"github.com/flynn/noise"
 	"github.com/sirupsen/logrus"
 	"net"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 )
@@ -22,7 +23,7 @@ type CachedPacket struct {
 type packetCallback func(t header.MessageType, st header.MessageSubType, h *HostInfo, p, nb, out []byte)
 
 func NewHostMap(logger *logrus.Logger, vpnCIDR *net.IPNet, preferredRanges []*net.IPNet) *HostMap {
-	h := map[string]*HostInfo{}
+	h := map[api.VpnIp]*HostInfo{}
 	i := map[uint32]*HostInfo{}
 	r := map[uint32]*HostInfo{}
 	relays := map[uint32]*HostInfo{}
@@ -43,7 +44,7 @@ type HostMap struct {
 	Indexes       map[uint32]*HostInfo
 	Relays        map[uint32]*HostInfo // Maps a Relay IDX to a Relay HostInfo object
 	RemoteIndexes map[uint32]*HostInfo
-	hosts         map[string]*HostInfo
+	hosts         map[api.VpnIp]*HostInfo
 	logger        *logrus.Logger
 
 	preferredRanges []*net.IPNet
@@ -62,19 +63,19 @@ func (hm *HostMap) PrintHosts() {
 func (hm *HostMap) DeleteHost(vip api.VpnIp) {
 	hm.Lock()
 	defer hm.Unlock()
-	delete(hm.hosts, vip.String())
+	delete(hm.hosts, vip)
 }
 
 func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
-	if hostInfo, ok := hm.hosts[vip.String()]; ok {
+	if hostInfo, ok := hm.hosts[vip]; ok {
 		hostInfo.Remote = &udp.Addr{
 			IP:   udpAddr.IP,
 			Port: uint16(udpAddr.Port),
 		}
 	} else {
-		hm.hosts[vip.String()] = &HostInfo{
+		hm.hosts[vip] = &HostInfo{
 			Remote: &udp.Addr{
 				IP:   udpAddr.IP,
 				Port: uint16(udpAddr.Port),
@@ -85,28 +86,18 @@ func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *udp.Addr) {
 	}
 }
 
-func (hm *HostMap) AddHost(vpnIP string, udpAddr *udp.Addr) {
+func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
-	fmt.Printf("AddHost vpnIP => %s addr => %s\n", vpnIP, udpAddr)
-	ip, _ := api.ParseVpnIp(vpnIP)
-
-	// 检查是否已存在相同的 vpnIP，如果存在则只更新主机信息
-	if hostInfo, ok := hm.hosts[vpnIP]; ok {
-		hostInfo.Remote = &udp.Addr{
+	fmt.Printf("AddHost vpnIP:%s addr:%s\n", vpnIP, udpAddr)
+	fmt.Println("Stack Trace:", string(debug.Stack()))
+	hm.hosts[vpnIP] = &HostInfo{
+		Remote: &udp.Addr{
 			IP:   udpAddr.IP,
 			Port: udpAddr.Port,
-		}
-	} else {
-		// 不存在则添加新的主机信息
-		hm.hosts[vpnIP] = &HostInfo{
-			Remote: &udp.Addr{
-				IP:   udpAddr.IP,
-				Port: udpAddr.Port,
-			},
-			Remotes: RemoteList{},
-			VpnIp:   ip,
-		}
+		},
+		Remotes: RemoteList{},
+		VpnIp:   vpnIP,
 	}
 }
 
@@ -117,7 +108,7 @@ func (hm *HostMap) QueryVpnIp(vpnIp api.VpnIp) *HostInfo {
 
 func (hm *HostMap) queryVpnIp(vpnIp api.VpnIp) *HostInfo {
 	hm.RLock()
-	if h, ok := hm.hosts[vpnIp.String()]; ok {
+	if h, ok := hm.hosts[vpnIp]; ok {
 		hm.RUnlock()
 		// Do not attempt promotion if you are a lighthouse
 		//if promoteIfce != nil && !promoteIfce.lightHouse.amLighthouse {
@@ -131,12 +122,12 @@ func (hm *HostMap) queryVpnIp(vpnIp api.VpnIp) *HostInfo {
 	return nil
 }
 
-func (hm *HostMap) GetAllHostMap() map[string]*HostInfo {
+func (hm *HostMap) GetAllHostMap() map[api.VpnIp]*HostInfo {
 	hm.RLock()
 	defer hm.RUnlock()
-	hosts := make(map[string]*HostInfo)
+	hosts := make(map[api.VpnIp]*HostInfo)
 	for vpnIP, hostInfo := range hm.hosts {
-		fmt.Printf("GetAllHostMap VPN IP: %s, Host Info: %v\n", vpnIP, hostInfo)
+		fmt.Printf("VPN IP: %s, Host Info: %v\n", vpnIP, hostInfo)
 		hosts[vpnIP] = hostInfo
 	}
 	return hosts
@@ -147,7 +138,7 @@ func (hm *HostMap) GetRemoteAddrList(vpnIP api.VpnIp) []*udp.Addr {
 	hm.RLock()
 	defer hm.RUnlock()
 
-	if hostInfo, ok := hm.hosts[vpnIP.String()]; ok {
+	if hostInfo, ok := hm.hosts[vpnIP]; ok {
 		return hostInfo.GetRemoteAddrList()
 	}
 

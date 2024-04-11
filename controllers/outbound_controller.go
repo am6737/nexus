@@ -174,7 +174,7 @@ func (oc *OutboundController) configureStaticHostMap() {
 			continue
 		}
 		vpnIp := api.Ip2VpnIp(ip)
-		oc.hosts.AddHost(vpnIp.String(), &udp.Addr{
+		oc.hosts.AddHost(vpnIp, &udp.Addr{
 			IP:   udpAddr.IP,
 			Port: uint16(udpAddr.Port),
 		})
@@ -257,7 +257,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 }
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
-	oc.hosts.AddHost(pk.RemoteIP.String(), addr)
+	oc.hosts.AddHost(pk.RemoteIP, addr)
 	//oc.hosts.PrintHosts()
 	switch h.MessageSubtype {
 	case header.HostSync:
@@ -281,13 +281,13 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			Info("收到灯塔同步回复数据包")
 		p = p[header.Len+20:]
 		fmt.Println("p => ", string(p))
-		var hs map[string]*host.HostInfo
+		var hs map[api.VpnIp]*host.HostInfo
 		if err := json.Unmarshal(p, &hs); err != nil {
 			oc.logger.WithError(err).Error("解析数据包出错")
 			return
 		}
 		for i, i2 := range hs {
-			if i == oc.localVpnIP.String() {
+			if i == oc.localVpnIP {
 				continue
 			}
 			fmt.Println("i => ", i)

@@ -179,7 +179,7 @@ func (hc *HandshakeController) buildHandshakeAndHostSyncPacket(vip api.VpnIp) ([
 }
 
 // Handshake 实现 HandshakeController 接口，启动针对指定 VPN IP 的握手过程
-func (hc *HandshakeController) Handshake(vip string) error {
+func (hc *HandshakeController) Handshake(vip api.VpnIp) error {
 	hc.Lock()
 	defer hc.Unlock()
 
@@ -206,11 +206,9 @@ func (hc *HandshakeController) Handshake(vip string) error {
 	// 将新的握手主机信息添加到列表中
 	//hc.hosts[vip] = handshakeHostInfo
 
-	ip, _ := api.ParseVpnIp(vip)
-
 	// 触发发送握手消息
 	select {
-	case hc.outboundTrigger <- ip:
+	case hc.outboundTrigger <- vip:
 	default:
 	}
 
