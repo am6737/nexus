@@ -81,15 +81,16 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 				fmt.Println("解析地址出错：", err)
 				continue
 			}
-			lighthouses[vpnIp] = &host.HostInfo{
-				Remote: &udp.Addr{
-					IP:   udpAddr.IP,
-					Port: uint16(udpAddr.Port),
-				},
+			r := &udp.Addr{
+				IP:   udpAddr.IP,
+				Port: uint16(udpAddr.Port),
 			}
+			lighthouses[vpnIp] = &host.HostInfo{
+				Remote: r,
+			}
+			hosts.AddHost(vpnIp, r)
 		}
 	}
-	hosts.Hosts = lighthouses
 
 	handshakeController := NewHandshakeController(
 		logger.WithField("controller", "Handshake").Logger,

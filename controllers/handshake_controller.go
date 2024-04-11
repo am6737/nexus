@@ -112,7 +112,7 @@ func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 				return
 			case <-ticker.C:
 				//hc.RLock()
-				for vip := range hc.mainHostMap.Hosts {
+				for vip := range hc.mainHostMap.GetAllHostMap() {
 					if err := hc.Handshake(vip); err != nil {
 						hc.logger.Errorf("Error initiating handshake for %s: %v", vip, err)
 					}

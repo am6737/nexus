@@ -30,7 +30,7 @@ func NewHostMap(logger *logrus.Logger, vpnCIDR *net.IPNet, preferredRanges []*ne
 		Indexes:       i,
 		Relays:        relays,
 		RemoteIndexes: r,
-		Hosts:         h,
+		hosts:         h,
 		//preferredRanges: preferredRanges,
 		vpnCIDR: vpnCIDR,
 		logger:  logger,
@@ -43,7 +43,7 @@ type HostMap struct {
 	Indexes       map[uint32]*HostInfo
 	Relays        map[uint32]*HostInfo // Maps a Relay IDX to a Relay HostInfo object
 	RemoteIndexes map[uint32]*HostInfo
-	Hosts         map[api.VpnIp]*HostInfo
+	hosts         map[api.VpnIp]*HostInfo
 	logger        *logrus.Logger
 
 	preferredRanges []*net.IPNet
@@ -51,22 +51,30 @@ type HostMap struct {
 	metricsEnabled  bool
 }
 
+func (hm *HostMap) PrintHosts() {
+	hm.RLock()
+	defer hm.RUnlock()
+	for vpnIP, hostInfo := range hm.hosts {
+		fmt.Printf("VPN IP: %s, Host Info: %v\n", vpnIP, hostInfo)
+	}
+}
+
 func (hm *HostMap) DeleteHost(vip api.VpnIp) {
 	hm.Lock()
 	defer hm.Unlock()
-	delete(hm.Hosts, vip)
+	delete(hm.hosts, vip)
 }
 
 func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
-	if hostInfo, ok := hm.Hosts[vip]; ok {
+	if hostInfo, ok := hm.hosts[vip]; ok {
 		hostInfo.Remote = &udp.Addr{
 			IP:   udpAddr.IP,
 			Port: uint16(udpAddr.Port),
 		}
 	} else {
-		hm.Hosts[vip] = &HostInfo{
+		hm.hosts[vip] = &HostInfo{
 			Remote: &udp.Addr{
 				IP:   udpAddr.IP,
 				Port: uint16(udpAddr.Port),
@@ -81,7 +89,7 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
 	fmt.Printf("AddHost vpnIP:%s addr:%s\n", vpnIP, udpAddr)
-	hm.Hosts[vpnIP] = &HostInfo{
+	hm.hosts[vpnIP] = &HostInfo{
 		Remote: &udp.Addr{
 			IP:   udpAddr.IP,
 			Port: udpAddr.Port,
@@ -98,7 +106,7 @@ func (hm *HostMap) QueryVpnIp(vpnIp api.VpnIp) *HostInfo {
 
 func (hm *HostMap) queryVpnIp(vpnIp api.VpnIp) *HostInfo {
 	hm.RLock()
-	if h, ok := hm.Hosts[vpnIp]; ok {
+	if h, ok := hm.hosts[vpnIp]; ok {
 		hm.RUnlock()
 		// Do not attempt promotion if you are a lighthouse
 		//if promoteIfce != nil && !promoteIfce.lightHouse.amLighthouse {
@@ -112,12 +120,22 @@ func (hm *HostMap) queryVpnIp(vpnIp api.VpnIp) *HostInfo {
 	return nil
 }
 
+func (hm *HostMap) GetAllHostMap() map[api.VpnIp]*HostInfo {
+	hm.RLock()
+	defer hm.RUnlock()
+	hosts := make(map[api.VpnIp]*HostInfo)
+	for vpnIP, hostInfo := range hm.hosts {
+		hosts[vpnIP] = hostInfo
+	}
+	return hosts
+}
+
 // GetRemoteAddrList 返回指定 VPN IP 的主机的远程地址列表
 func (hm *HostMap) GetRemoteAddrList(vpnIP api.VpnIp) []*udp.Addr {
 	hm.RLock()
 	defer hm.RUnlock()
 
-	if hostInfo, ok := hm.Hosts[vpnIP]; ok {
+	if hostInfo, ok := hm.hosts[vpnIP]; ok {
 		return hostInfo.GetRemoteAddrList()
 	}
 

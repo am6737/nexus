@@ -137,7 +137,8 @@ func (lc *LighthouseController) startQueryWorker(ctx context.Context) {
 }
 
 func (lc *LighthouseController) Query(vpnIP api.VpnIp) (*host.HostInfo, error) {
-	if host, ok := lc.host.Hosts[vpnIP]; ok {
+	host := lc.host.QueryVpnIp(vpnIP)
+	if host != nil {
 		return host, nil
 	}
 	lc.queryQueue <- vpnIP
@@ -174,7 +175,7 @@ func (lc *LighthouseController) Store(info *host.HostInfo) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	lc.host.Hosts[info.VpnIp] = info
+	lc.host.UpdateHost(info.VpnIp, info.Remote)
 	log.Printf("Node stored successfully: %+v\n", info)
 	return nil
 }
