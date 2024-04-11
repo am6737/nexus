@@ -308,8 +308,6 @@ func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIp, d
 		return nil, err
 	}
 
-	fmt.Println("pv4Packet => ", len(pv4Packet))
-
 	var buf bytes.Buffer
 	buf.Write(handshakePacket)
 	buf.Write(pv4Packet)
