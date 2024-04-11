@@ -202,6 +202,12 @@ func (oc *OutboundController) getLighthouses() []*host.HostInfo {
 func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.Header, internalWriter interfaces.InsideWriter) {
 	pk := &packet.Packet{}
 
+	copiedAddr := &udp.Addr{
+		IP:   make(net.IP, len(addr.IP)),
+		Port: addr.Port,
+	}
+	copy(copiedAddr.IP, addr.IP)
+
 	if err := h.Decode(p); err != nil {
 		oc.logger.WithError(err).Error("解析数据包头出错")
 		return
@@ -225,9 +231,9 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 	case header.Handshake:
 		oc.logger.
 			WithField("握手数据包", pk).
-			WithField("远程地址", addr).
+			WithField("远程地址", copiedAddr).
 			Info("收到握手数据包")
-		oc.handleHandshake(addr, pk, h, p)
+		oc.handleHandshake(copiedAddr, pk, h, p)
 	case header.Message:
 		out := p
 		p = p[header.Len:]
@@ -244,8 +250,8 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 			if pk.Protocol != packet.ProtoICMP {
 				oc.handleLocalVpnAddress(p, pk, internalWriter)
 			}
-			if err := oc.outside.WriteTo(out, addr); err != nil {
-				oc.logger.WithError(err).WithField("addr", addr).Error("数据转发到远程")
+			if err := oc.outside.WriteTo(out, copiedAddr); err != nil {
+				oc.logger.WithError(err).WithField("addr", copiedAddr).Error("数据转发到远程")
 			}
 		}
 	case header.LightHouse:

@@ -55,7 +55,7 @@ func (hm *HostMap) PrintHosts() {
 	hm.RLock()
 	defer hm.RUnlock()
 	for vpnIP, hostInfo := range hm.hosts {
-		fmt.Printf("VPN IP: %s, Host Info: %v\n", vpnIP, hostInfo)
+		fmt.Printf(" vip: %s, remote: %v\n", vpnIP, hostInfo.Remote)
 	}
 }
 
@@ -88,7 +88,7 @@ func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *udp.Addr) {
 func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
-	fmt.Printf("AddHost vpnIP:%s addr:%s\n", vpnIP, udpAddr)
+	fmt.Printf("AddHost vip => %s addr => %s\n", vpnIP, udpAddr)
 	hm.hosts[vpnIP] = &HostInfo{
 		Remote: &udp.Addr{
 			IP:   udpAddr.IP,
@@ -125,7 +125,7 @@ func (hm *HostMap) GetAllHostMap() map[api.VpnIp]*HostInfo {
 	defer hm.RUnlock()
 	hosts := make(map[api.VpnIp]*HostInfo)
 	for vpnIP, hostInfo := range hm.hosts {
-		fmt.Printf("VPN IP: %s, Host Info: %v\n", vpnIP, hostInfo)
+		fmt.Printf("vip: %s, remote: %v\n", vpnIP, hostInfo.Remote)
 		hosts[vpnIP] = hostInfo
 	}
 	return hosts
