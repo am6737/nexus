@@ -259,6 +259,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 		WithField("握手数据包", pk).
 		WithField("远程地址", addr).
 		WithField("握手类型", h.SubTypeName()).
+		WithField("h", h.String()).
 		Info("收到握手数据包")
 	switch h.MessageSubtype {
 	case header.HostSync:
