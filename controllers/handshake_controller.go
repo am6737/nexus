@@ -164,7 +164,7 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 			WithField("lightHouse", lightHouse.VpnIp).
 			WithField("addr", lightHouse.Remote).
 			WithField("localIndex", hc.localIndexID).
-			Info("send lightHouse sync handshake packet")
+			Debug("send lightHouse sync handshake packet")
 		if err := hc.Handshake(lightHouse.VpnIp, p); err != nil {
 			hc.logger.Errorf("Error initiating handshake for %s: %v", lightHouse.VpnIp, err)
 		}
