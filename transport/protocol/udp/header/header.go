@@ -15,7 +15,7 @@ type MessageType uint8
 type MessageSubType uint8
 
 const (
-	Handshake MessageType = iota
+	Handshake MessageType = iota + 1
 	Message
 	LightHouse
 	Close
@@ -23,7 +23,7 @@ const (
 )
 
 const (
-	HostQuery MessageSubType = iota
+	HostQuery MessageSubType = iota + 1
 	HostQueryReply
 	HostUpdateNotification
 	HostSync
