@@ -95,7 +95,7 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 			case hr := <-hc.outboundTrigger:
 				hc.handleOutbound(hr, true)
 			case <-hc.outboundTimer.C:
-				hc.handleOutboundTimerTick()
+				//hc.handleOutboundTimerTick()
 			}
 		}
 	}()
@@ -103,31 +103,31 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 	hc.handshakeAllHosts(ctx)
 	hc.syncLighthouse(ctx)
 
-	//go func() {
-	//	handshakeHostTicker := time.NewTicker(10 * time.Second)
-	//	defer handshakeHostTicker.Stop()
-	//	for {
-	//		select {
-	//		case <-ctx.Done():
-	//			return
-	//		case <-handshakeHostTicker.C:
-	//			hc.handshakeAllHosts(ctx)
-	//		}
-	//	}
-	//}()
-	//
-	//go func() {
-	//	syncLighthouseTicker := time.NewTicker(30 * time.Second)
-	//	defer syncLighthouseTicker.Stop()
-	//	for {
-	//		select {
-	//		case <-ctx.Done():
-	//			return
-	//		case <-syncLighthouseTicker.C:
-	//			hc.syncLighthouse(ctx)
-	//		}
-	//	}
-	//}()
+	go func() {
+		handshakeHostTicker := time.NewTicker(10 * time.Second)
+		defer handshakeHostTicker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-handshakeHostTicker.C:
+				hc.handshakeAllHosts(ctx)
+			}
+		}
+	}()
+
+	go func() {
+		syncLighthouseTicker := time.NewTicker(30 * time.Second)
+		defer syncLighthouseTicker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-syncLighthouseTicker.C:
+				hc.syncLighthouse(ctx)
+			}
+		}
+	}()
 
 	return nil
 }
