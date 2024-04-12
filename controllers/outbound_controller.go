@@ -258,12 +258,10 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 	oc.logger.
 		WithField("握手数据包", pk).
 		WithField("远程地址", addr).
-		WithField("握手类型", h.SubTypeName()).
-		WithField("h", h.String()).
+		WithField("握手头", h.String()).
 		Info("收到握手数据包")
 	switch h.MessageSubtype {
 	case header.HostSync:
-		oc.hosts.AddHost(pk.RemoteIP, addr)
 		if len(oc.hosts.GetAllHostMap()) <= 0 {
 			return
 		}
@@ -298,6 +296,8 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			}
 			oc.hosts.AddHost(i, i2.Remote)
 		}
+	default:
+		oc.hosts.AddHost(pk.RemoteIP, addr)
 	}
 }
 
