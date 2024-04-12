@@ -30,6 +30,14 @@ const (
 	HostSyncReply
 )
 
+var subtTypeMap = map[MessageSubType]string{
+	HostQuery:              "hostQuery",
+	HostQueryReply:         "hostQueryReply",
+	HostUpdateNotification: "hostUpdateNotification",
+	HostSync:               "hostSync",
+	HostSyncReply:          "hostSyncReply",
+}
+
 var typeMap = map[MessageType]string{
 	Handshake:  "handshake",
 	Message:    "message",
@@ -187,16 +195,14 @@ func TypeName(t MessageType) string {
 
 // SubTypeName will transform the headers message sub type into a human string
 func (h *Header) SubTypeName() string {
-	return SubTypeName(h.MessageType, h.MessageSubtype)
+	return SubTypeName(h.MessageSubtype)
 }
 
 // SubTypeName will transform a nebula message sub type into a human string
-func SubTypeName(t MessageType, s MessageSubType) string {
-	//if n, ok := subTypeMap[t]; ok {
-	//	if x, ok := (*n)[s]; ok {
-	//		return x
-	//	}
-	//}
+func SubTypeName(s MessageSubType) string {
+	if n, ok := subtTypeMap[s]; ok {
+		return n
+	}
 
 	return "unknown"
 }

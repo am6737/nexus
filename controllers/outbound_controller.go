@@ -222,10 +222,6 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 
 	switch h.MessageType {
 	case header.Handshake:
-		oc.logger.
-			WithField("握手数据包", pk).
-			WithField("远程地址", addr).
-			Info("收到握手数据包")
 		oc.handleHandshake(addr, pk, h, p)
 	case header.Message:
 		oc.logger.WithField("远程地址", addr).
@@ -259,6 +255,11 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 }
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
+	oc.logger.
+		WithField("握手数据包", pk).
+		WithField("远程地址", addr).
+		WithField("握手类型", h.SubTypeName()).
+		Info("收到握手数据包")
 	switch h.MessageSubtype {
 	case header.HostSync:
 		oc.hosts.AddHost(pk.RemoteIP, addr)
