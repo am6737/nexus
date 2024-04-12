@@ -275,7 +275,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 	case header.HostSyncReply:
 		oc.logger.
 			WithField("pk", pk).
-			Info("收到灯塔同步回复数据包")
+			Debug("收到灯塔同步回复数据包")
 		p = p[header.Len+20:]
 		var hs map[api.VpnIp]*host.HostInfo
 		if err := json.Unmarshal(p, &hs); err != nil {

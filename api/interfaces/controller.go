@@ -52,7 +52,7 @@ type InboundController interface {
 // HandshakeController 握手控制器接口
 type HandshakeController interface {
 	Runnable
-	Handshake(vpnIp api.VpnIp) error
+	Handshake(vpnIp api.VpnIp, packet []byte) error
 }
 
 // LighthouseController 灯塔控制器接口
