@@ -255,7 +255,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 }
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
-	//oc.hosts.AddHost(pk.RemoteIP, addr)
+	oc.hosts.AddHost(pk.RemoteIP, addr)
 	switch h.MessageSubtype {
 	case header.HostSync:
 		hp, _ := json.Marshal(oc.hosts.GetAllHostMap())
