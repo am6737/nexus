@@ -91,33 +91,31 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 
 	newAddr := udpAddr.Copy()
 
-	host, ok := hm.hosts[vpnIP]
+	_, ok := hm.hosts[vpnIP]
 	if !ok {
 		hm.logger.WithFields(logrus.Fields{
 			"vpnIP": vpnIP,
 			"addr":  newAddr,
 		}).Info("Add new host")
-
 		hm.hosts[vpnIP] = &HostInfo{
 			Remote: newAddr,
 			VpnIp:  vpnIP,
 		}
-
 		return
 	}
 
-	if host.Remote == nil {
-		host.Remote = newAddr
-	} else {
-		if host.Remote.IP.String() != newAddr.IP.String() || host.Remote.Port != newAddr.Port {
-			hm.logger.WithFields(logrus.Fields{
-				"vpnIP":    vpnIP,
-				"old addr": host.Remote,
-				"new addr": newAddr,
-			}).Info("Update host addr")
-			host.Remote = newAddr
-		}
-	}
+	//if host.Remote == nil {
+	//	host.Remote = newAddr
+	//} else {
+	//	if host.Remote.IP.String() != newAddr.IP.String() || host.Remote.Port != newAddr.Port {
+	//		hm.logger.WithFields(logrus.Fields{
+	//			"vpnIP":    vpnIP,
+	//			"old addr": host.Remote,
+	//			"new addr": newAddr,
+	//		}).Info("Update host addr")
+	//		host.Remote = newAddr
+	//	}
+	//}
 }
 
 func (hm *HostMap) QueryVpnIp(vpnIp api.VpnIp) *HostInfo {

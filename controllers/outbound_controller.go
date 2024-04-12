@@ -297,7 +297,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			oc.hosts.AddHost(i, i2.Remote)
 		}
 	default:
-		oc.hosts.AddHost(pk.RemoteIP, addr)
+		oc.hosts.UpdateHost(pk.RemoteIP, addr)
 	}
 }
 
