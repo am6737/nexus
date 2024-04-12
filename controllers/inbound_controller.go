@@ -81,7 +81,7 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 
 	if packet.RemoteIP == ic.localVpnIP {
 		// Immediately forward packets from self to self.
-		// This should only happen on Darwin-based and FreeBSD hosts, which
+		// This should only happen on Darwin-based and FreeBSD handshakeHosts, which
 		// routes packets from the Nebula IP to the Nebula IP through the Nebula
 		// TUN device.
 		if ifce.ImmediatelyForwardToSelf {

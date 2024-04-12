@@ -28,7 +28,7 @@ func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow inter
 		logger: logger,
 		host:   host,
 		ow:     ow,
-		//hosts:       make(map[api.VpnIp]*host.HostInfo),
+		//handshakeHosts:       make(map[api.VpnIp]*host.HostInfo),
 		queryQueue:  make(chan api.VpnIp, 1000),
 		queryWorker: &sync.WaitGroup{},
 	}
@@ -37,7 +37,7 @@ func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow inter
 type LighthouseController struct {
 	mu   sync.RWMutex
 	host *host.HostMap
-	//hosts       map[api.VpnIp]*host.HostInfo
+	//handshakeHosts       map[api.VpnIp]*host.HostInfo
 	queryQueue  chan api.VpnIp
 	queryWorker *sync.WaitGroup
 	logger      *logrus.Logger

@@ -256,7 +256,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
 	oc.hosts.AddHost(pk.RemoteIP, addr)
-	//oc.hosts.PrintHosts()
+	//oc.handshakeHosts.PrintHosts()
 	switch h.MessageSubtype {
 	case header.HostSync:
 		hp, _ := json.Marshal(oc.hosts.GetAllHostMap())
@@ -314,7 +314,7 @@ func (oc *OutboundController) updateRemotes(pk *packet.Packet, addr *udp.Addr) {
 	//	IP:   addr.IP,
 	//	Port: int(addr.Port),
 	//}
-	//oc.hosts.UpdateHost(pk.RemoteIP, addr)
+	//oc.handshakeHosts.UpdateHost(pk.RemoteIP, addr)
 }
 
 // 处理目标地址是本地VPN地址的情况
