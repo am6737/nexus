@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
@@ -72,6 +73,8 @@ func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, li
 		config:          ApplyDefaultHandshakeConfig(&config),
 		outboundTimer:   time.NewTimer(config.TryInterval),
 		outboundTrigger: make(chan HandshakeRequest, config.TriggerBuffer),
+		metricInitiated: metrics.GetOrRegisterCounter("handshake_manager.initiated", nil),
+		metricTimedOut:  metrics.GetOrRegisterCounter("handshake_manager.timed_out", nil),
 		logger:          logger,
 		mainHostMap:     mainHostMap,
 		lightHouses:     lightHouses,
@@ -242,6 +245,7 @@ func (hc *HandshakeController) handleOutbound(hr HandshakeRequest, lighthouseTri
 
 	// 如果已经超过重试次数，则终止握手过程
 	if handshakeHostInfo.Counter >= hc.config.Retries {
+		fmt.Println("握手超时次数 => ", handshakeHostInfo.Counter)
 		hc.metricTimedOut.Inc(1)
 		hc.deleteHandshakeInfo(hr.VIP)
 		return
