@@ -77,7 +77,6 @@ func (oc *OutboundController) WriteToVIP(p []byte, vip api.VpnIp) error {
 		WithField("目标远程地址", host.Remote).
 		WithField("数据包", p).
 		Info("出站流量")
-	host.Remote.Port = 60591
 	return oc.outside.WriteTo(p, host.Remote)
 }
 
