@@ -28,6 +28,10 @@ func main() {
 	logger := logrus.New()
 	logger.Out = os.Stdout
 	logger.SetLevel(logrus.InfoLevel)
+	logger.SetFormatter(&logrus.TextFormatter{
+		TimestampFormat: "2006-01-02 15:04:05",
+		FullTimestamp:   true,
+	})
 
 	// 创建新的 DarwinTun 实例
 	tunDevice, err := tun.NewDeviceFromConfig(cfg, nil)
