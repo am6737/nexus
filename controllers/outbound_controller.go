@@ -222,7 +222,23 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 
 	switch h.MessageType {
 	case header.Test:
-
+		oc.logger.
+			WithField("p", p).
+			WithField("远程地址", addr).
+			Info("收到测试消息")
+		testPacket, err := oc.buildTestReplyPacket(pk.RemoteIP)
+		if err != nil {
+			oc.logger.WithError(err).Error("buildTestPacket")
+			return
+		}
+		if err := oc.outside.WriteTo(testPacket, addr); err != nil {
+			oc.logger.WithError(err).Error("数据转发到远程")
+		}
+	case header.TestReply:
+		oc.logger.
+			WithField("p", p).
+			WithField("远程地址", addr).
+			Info("收到测试回复消息")
 	case header.Handshake:
 		oc.handleHandshake(addr, pk, h, p)
 	case header.Message:
@@ -264,6 +280,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 		Info("收到握手数据包")
 	switch h.MessageSubtype {
 	case header.HostSync:
+		oc.hosts.UpdateHost(pk.RemoteIP, addr)
 		if len(oc.hosts.GetAllHostMap()) <= 0 {
 			return
 		}
@@ -276,17 +293,16 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 		oc.logger.
 			WithField("remoteIP", pk.RemoteIP).
 			WithField("addr", addr).
-			Debug("发送主机同步回复数据包")
+			Info("发送主机同步回复数据包")
 		if err := oc.outside.WriteTo(replyPacket, addr); err != nil {
 			oc.logger.WithError(err).Error("数据转发到远程")
 		}
 	case header.HostSyncReply:
 		p = p[header.Len+20:]
-		//oc.logger.
-		//	WithField("pk", pk).
-		//	WithField("addr", addr).
-		//	WithField("p", string(p)).
-		//	Debug("收到灯塔同步回复数据包")
+		oc.logger.
+			WithField("pk", pk).
+			WithField("addr", addr).
+			Info("收到灯塔同步回复数据包")
 		var hs map[api.VpnIp]*host.HostInfo
 		if err := json.Unmarshal(p, &hs); err != nil {
 			oc.logger.WithError(err).Error("解析数据包出错")
@@ -301,6 +317,10 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 				oc.logger.WithError(err).Error("buildTestPacket")
 				return
 			}
+			oc.logger.
+				WithField("remoteIP", i).
+				WithField("addr", i2.Remote).
+				Info("发送测试消息")
 			if err := oc.outside.WriteTo(testPacket, i2.Remote); err != nil {
 				oc.logger.WithError(err).Error("数据转发到远程")
 			}
@@ -311,8 +331,8 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 	}
 }
 
-func (oc *OutboundController) buildTestPacket(vip api.VpnIp) ([]byte, error) {
-	handshakePacket := header.BuildTestPacket(0, 0)
+func (oc *OutboundController) buildTestReplyPacket(vip api.VpnIp) ([]byte, error) {
+	handshakePacket := header.BuildTestPacket(header.TestReply, 0, 0)
 	pv4Packet, err := packet.BuildIPv4Packet(oc.localVpnIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
 	if err != nil {
 		return nil, err
@@ -321,6 +341,23 @@ func (oc *OutboundController) buildTestPacket(vip api.VpnIp) ([]byte, error) {
 	var buf bytes.Buffer
 	buf.Write(handshakePacket)
 	buf.Write(pv4Packet)
+	t := make([]byte, 4)
+	buf.Write(t)
+	return buf.Bytes(), nil
+}
+
+func (oc *OutboundController) buildTestPacket(vip api.VpnIp) ([]byte, error) {
+	handshakePacket := header.BuildTestPacket(header.Test, 0, 0)
+	pv4Packet, err := packet.BuildIPv4Packet(oc.localVpnIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	buf.Write(handshakePacket)
+	buf.Write(pv4Packet)
+	t := make([]byte, 4)
+	buf.Write(t)
 	return buf.Bytes(), nil
 }
 

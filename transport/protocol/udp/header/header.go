@@ -21,6 +21,7 @@ const (
 	Close
 	Control
 	Test
+	TestReply
 )
 
 const (
@@ -56,10 +57,10 @@ type Header struct {
 	MessageCounter uint64
 }
 
-func BuildTestPacket(remoteIndex uint32, messageCounter uint64) []byte {
+func BuildTestPacket(ms MessageType, remoteIndex uint32, messageCounter uint64) []byte {
 	header := &Header{
 		Version:        Version,
-		MessageType:    Test,
+		MessageType:    ms,
 		MessageSubtype: 0,
 		Reserved:       0,
 		RemoteIndex:    remoteIndex,
