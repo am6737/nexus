@@ -219,7 +219,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		WithField("目标地址", pk.RemoteIP).
 		WithField("数据包", pk).
 		//WithField("原始数据", p).
-		Debug("入站流量")
+		Info("入站流量")
 
 	switch h.MessageType {
 	case header.Handshake:
@@ -255,7 +255,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 }
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
-	oc.hosts.AddHost(pk.RemoteIP, addr)
+	//oc.hosts.AddHost(pk.RemoteIP, addr)
 	switch h.MessageSubtype {
 	case header.HostSync:
 		hp, _ := json.Marshal(oc.hosts.GetAllHostMap())
