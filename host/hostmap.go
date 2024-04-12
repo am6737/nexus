@@ -88,6 +88,13 @@ func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *udp.Addr) {
 func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
+
+	if _, ok := hm.hosts[vpnIP]; !ok {
+		hm.logger.
+			WithField("addr", udpAddr).
+			Info("Adding new host: %s", vpnIP)
+	}
+
 	hm.hosts[vpnIP] = &HostInfo{
 		Remote: &udp.Addr{
 			IP:   udpAddr.IP,

@@ -142,7 +142,7 @@ func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 			WithField("vpnIP", vip).
 			WithField("addr", host.Remote).
 			WithField("localIndex", hc.localIndexID).
-			Info("send host handshake packet")
+			Debug("send host handshake packet")
 		if err := hc.Handshake(vip, handshakePacket); err != nil {
 			hc.logger.Errorf("Error initiating handshake for %s: %v", vip, err)
 		}
