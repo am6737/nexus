@@ -219,14 +219,14 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		WithField("目标地址", pk.RemoteIP).
 		WithField("数据包", pk).
 		//WithField("原始数据", p).
-		Debug("入站流量")
+		Info("入站流量")
 
 	switch h.MessageType {
 	case header.Handshake:
 		oc.logger.
 			WithField("握手数据包", pk).
 			WithField("远程地址", addr).
-			Debug("收到握手数据包")
+			Info("收到握手数据包")
 		oc.handleHandshake(addr, pk, h, p)
 	case header.Message:
 		out := p
