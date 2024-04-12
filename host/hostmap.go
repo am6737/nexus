@@ -89,15 +89,17 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
 
+	newAddr := udpAddr.Copy()
+
 	host, ok := hm.hosts[vpnIP]
 	if !ok {
 		hm.logger.WithFields(logrus.Fields{
 			"vpnIP": vpnIP,
-			"addr":  udpAddr,
+			"addr":  newAddr,
 		}).Info("Add new host")
 
 		hm.hosts[vpnIP] = &HostInfo{
-			Remote: udpAddr.Copy(),
+			Remote: newAddr,
 			VpnIp:  vpnIP,
 		}
 
@@ -105,23 +107,23 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 	}
 
 	if host.Remote == nil {
-		host.Remote = udpAddr.Copy()
+		host.Remote = newAddr
 	} else {
-		if host.Remote.IP.String() != udpAddr.IP.String() {
+		if host.Remote.IP.String() != newAddr.IP.String() {
 			hm.logger.WithFields(logrus.Fields{
 				"vpnIP":  vpnIP,
 				"old ip": host.Remote.IP,
-				"new ip": udpAddr.IP,
+				"new ip": newAddr.IP,
 			}).Info("Update host ip")
-			host.Remote.IP = udpAddr.IP
+			host.Remote.IP = newAddr.IP
 		}
-		if host.Remote.Port != udpAddr.Port {
+		if host.Remote.Port != newAddr.Port {
 			hm.logger.WithFields(logrus.Fields{
 				"vpnIP":    vpnIP,
 				"old port": host.Remote.Port,
-				"new port": udpAddr.Port,
+				"new port": newAddr.Port,
 			}).Info("Update host port")
-			host.Remote.Port = udpAddr.Port
+			host.Remote.Port = newAddr.Port
 		}
 	}
 }
