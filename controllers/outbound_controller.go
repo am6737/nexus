@@ -226,7 +226,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		oc.logger.
 			WithField("握手数据包", pk).
 			WithField("远程地址", addr).
-			Info("收到握手数据包")
+			Debug("收到握手数据包")
 		oc.handleHandshake(addr, pk, h, p)
 	case header.Message:
 		out := p

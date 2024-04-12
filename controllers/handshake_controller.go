@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
@@ -97,7 +96,7 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 			case hr := <-hc.outboundTrigger:
 				hc.handleOutbound(hr, true)
 			case <-hc.outboundTimer.C:
-				hc.handleOutboundTimerTick()
+				//hc.handleOutboundTimerTick()
 			}
 		}
 	}()
@@ -136,11 +135,16 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 
 // handshakeAllHosts 对所有主机进行握手
 func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
-	for vip := range hc.mainHostMap.GetAllHostMap() {
+	for vip, host := range hc.mainHostMap.GetAllHostMap() {
 		handshakePacket, err := hc.buildHostHandshakePacket(vip)
 		if err != nil {
 			return
 		}
+		hc.logger.
+			WithField("vpnIP", vip).
+			WithField("addr", host.Remote).
+			WithField("localIndex", hc.localIndexID).
+			Info("send host handshake packet")
 		if err := hc.Handshake(vip, handshakePacket); err != nil {
 			hc.logger.Errorf("Error initiating handshake for %s: %v", vip, err)
 		}
@@ -158,6 +162,11 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 			hc.logger.WithError(err).Error("Failed to build handshake and host sync packet")
 			continue
 		}
+		hc.logger.
+			WithField("lightHouse", lightHouse.VpnIp).
+			WithField("addr", lightHouse.Remote).
+			WithField("localIndex", hc.localIndexID).
+			Info("send lightHouse sync handshake packet")
 		if err := hc.Handshake(lightHouse.VpnIp, p); err != nil {
 			hc.logger.Errorf("Error initiating handshake for %s: %v", lightHouse.VpnIp, err)
 		}
@@ -249,24 +258,18 @@ func (hc *HandshakeController) handleOutbound(hr HandshakeRequest, lighthouseTri
 	// 获取远程地址列表
 	remoteAddrList := hc.mainHostMap.GetRemoteAddrList(hr.VIP)
 
-	fmt.Println("remoteAddrList => ", remoteAddrList)
+	//fmt.Println("remoteAddrList => ", remoteAddrList)
 
 	// 转换为 net.Addr 类型的地址列表
 	var netRemoteAddrList []net.Addr
 
 	// 发送握手消息到远程地址列表中的每个地址
 	for _, remoteAddr := range remoteAddrList {
-		fmt.Println("handshakePacket => ", hr.Packet)
+		//fmt.Println("handshakePacket => ", hr.Packet)
 		if err := hc.outside.WriteTo(hr.Packet, remoteAddr); err != nil {
 			hc.logger.Errorf("failed to send handshake packet to %s: %v", remoteAddr, err)
 			continue
 		}
-		hc.logger.
-			WithField("vpnIP", hr.VIP).
-			WithField("addr", remoteAddr).
-			WithField("localIndex", hc.localIndexID).
-			WithField("counter", handshakeHostInfo.Counter).
-			Info("sent handshake packet")
 		netRemoteAddrList = append(netRemoteAddrList,
 			&net.UDPAddr{
 				IP:   remoteAddr.IP,
