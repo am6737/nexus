@@ -22,8 +22,10 @@ func (a Addr) NetAddr() net.Addr {
 }
 
 func (a Addr) Copy() *Addr {
-	return &Addr{
-		IP:   a.IP.To4(),
+	newAddr := &Addr{
+		IP:   make(net.IP, len(a.IP)),
 		Port: a.Port,
 	}
+	copy(newAddr.IP, a.IP)
+	return newAddr
 }

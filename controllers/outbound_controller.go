@@ -346,6 +346,11 @@ func (oc *OutboundController) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 func (oc *OutboundController) Listen(internalWriter interfaces.InsideWriter) {
 	runtime.LockOSThread()
 	oc.outside.ListenOut(func(addr *udp.Addr, out []byte, p []byte, h *header.Header) {
+		//copiedAddr := &udp.Addr{
+		//	IP:   make(net.IP, len(addr.IP)),
+		//	Port: addr.Port,
+		//}
+		//copy(copiedAddr.IP, addr.IP)
 		oc.handlePacket(addr.Copy(), p, h, internalWriter)
 	})
 }
