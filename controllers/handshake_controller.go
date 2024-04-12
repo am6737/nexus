@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
@@ -245,10 +244,10 @@ func (hc *HandshakeController) handleOutbound(hr HandshakeRequest, lighthouseTri
 
 	// 如果已经超过重试次数，则终止握手过程
 	if handshakeHostInfo.Counter >= hc.config.Retries {
-		fmt.Println("握手超时次数 => ", handshakeHostInfo.Counter)
-		hc.metricTimedOut.Inc(1)
-		hc.deleteHandshakeInfo(hr.VIP)
-		return
+		//fmt.Println("握手超时次数 => ", handshakeHostInfo.Counter)
+		//hc.metricTimedOut.Inc(1)
+		//hc.deleteHandshakeInfo(hr.VIP)
+		//return
 	}
 
 	// 获取远程地址列表
