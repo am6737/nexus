@@ -109,21 +109,13 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 	if host.Remote == nil {
 		host.Remote = newAddr
 	} else {
-		if host.Remote.IP.String() != newAddr.IP.String() {
-			hm.logger.WithFields(logrus.Fields{
-				"vpnIP":  vpnIP,
-				"old ip": host.Remote.IP,
-				"new ip": newAddr.IP,
-			}).Info("Update host ip")
-			host.Remote.IP = newAddr.IP
-		}
-		if host.Remote.Port != newAddr.Port {
+		if host.Remote.IP.String() != newAddr.IP.String() || host.Remote.Port != newAddr.Port {
 			hm.logger.WithFields(logrus.Fields{
 				"vpnIP":    vpnIP,
-				"old port": host.Remote.Port,
-				"new port": newAddr.Port,
-			}).Info("Update host port")
-			host.Remote.Port = newAddr.Port
+				"old addr": host.Remote,
+				"new addr": newAddr,
+			}).Info("Update host addr")
+			host.Remote = newAddr
 		}
 	}
 }

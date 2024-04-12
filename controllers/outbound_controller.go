@@ -267,7 +267,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 		oc.logger.
 			WithField("remoteIP", pk.RemoteIP).
 			WithField("addr", addr).
-			Debug("发送主机同步回复数据包")
+			Info("发送主机同步回复数据包")
 		if err := oc.outside.WriteTo(replyPacket, addr); err != nil {
 			oc.logger.WithError(err).Error("数据转发到远程")
 		}
@@ -346,11 +346,6 @@ func (oc *OutboundController) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 func (oc *OutboundController) Listen(internalWriter interfaces.InsideWriter) {
 	runtime.LockOSThread()
 	oc.outside.ListenOut(func(addr *udp.Addr, out []byte, p []byte, h *header.Header) {
-		//copiedAddr := &udp.Addr{
-		//	IP:   make(net.IP, len(addr.IP)),
-		//	Port: addr.Port,
-		//}
-		//copy(copiedAddr.IP, addr.IP)
 		oc.handlePacket(addr.Copy(), p, h, internalWriter)
 	})
 }
