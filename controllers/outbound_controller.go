@@ -306,8 +306,7 @@ func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIp, d
 	buf.Write(handshakePacket)
 	buf.Write(pv4Packet)
 	if len(data) < 4 {
-		b := make([]byte, 4)
-		buf.Write(b)
+		data = make([]byte, 4)
 	}
 	buf.Write(data)
 	return buf.Bytes(), nil
