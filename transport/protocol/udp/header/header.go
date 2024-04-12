@@ -20,6 +20,7 @@ const (
 	LightHouse
 	Close
 	Control
+	Test
 )
 
 const (
@@ -53,6 +54,21 @@ type Header struct {
 	Reserved       uint16
 	RemoteIndex    uint32
 	MessageCounter uint64
+}
+
+func BuildTestPacket(remoteIndex uint32, messageCounter uint64) []byte {
+	header := &Header{
+		Version:        Version,
+		MessageType:    Test,
+		MessageSubtype: 0,
+		Reserved:       0,
+		RemoteIndex:    remoteIndex,
+		MessageCounter: messageCounter,
+	}
+
+	packet := make([]byte, Len)
+	encodedHeader, _ := header.Encode(packet)
+	return encodedHeader
 }
 
 func BuildHostQueryReplyPacket(remoteIndex uint32, messageCounter uint64) []byte {

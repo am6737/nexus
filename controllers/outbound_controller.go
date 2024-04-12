@@ -221,6 +221,8 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 	//	Info("入站流量")
 
 	switch h.MessageType {
+	case header.Test:
+
 	case header.Handshake:
 		oc.handleHandshake(addr, pk, h, p)
 	case header.Message:
@@ -294,11 +296,32 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			if i == oc.localVpnIP {
 				continue
 			}
-			oc.hosts.AddHost(i, i2.Remote)
+			testPacket, err := oc.buildTestPacket(i)
+			if err != nil {
+				oc.logger.WithError(err).Error("buildTestPacket")
+				return
+			}
+			if err := oc.outside.WriteTo(testPacket, i2.Remote); err != nil {
+				oc.logger.WithError(err).Error("数据转发到远程")
+			}
+			oc.hosts.UpdateHost(i, i2.Remote)
 		}
 	default:
-		oc.hosts.UpdateHost(pk.RemoteIP, addr)
+		//oc.hosts.UpdateHost(pk.RemoteIP, addr)
 	}
+}
+
+func (oc *OutboundController) buildTestPacket(vip api.VpnIp) ([]byte, error) {
+	handshakePacket := header.BuildTestPacket(0, 0)
+	pv4Packet, err := packet.BuildIPv4Packet(oc.localVpnIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	buf.Write(handshakePacket)
+	buf.Write(pv4Packet)
+	return buf.Bytes(), nil
 }
 
 func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIp, data []byte) ([]byte, error) {
