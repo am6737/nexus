@@ -115,18 +115,18 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 		}
 	}()
 
-	go func() {
-		syncLighthouseTicker := time.NewTicker(30 * time.Second)
-		defer syncLighthouseTicker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-syncLighthouseTicker.C:
-				hc.syncLighthouse(ctx)
-			}
-		}
-	}()
+	//go func() {
+	//	syncLighthouseTicker := time.NewTicker(30 * time.Second)
+	//	defer syncLighthouseTicker.Stop()
+	//	for {
+	//		select {
+	//		case <-ctx.Done():
+	//			return
+	//		case <-syncLighthouseTicker.C:
+	//			hc.syncLighthouse(ctx)
+	//		}
+	//	}
+	//}()
 
 	return nil
 }

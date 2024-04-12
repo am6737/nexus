@@ -77,6 +77,7 @@ func (oc *OutboundController) WriteToVIP(p []byte, vip api.VpnIp) error {
 		WithField("目标远程地址", host.Remote).
 		WithField("数据包", p).
 		Info("出站流量")
+	host.Remote.Port = 60591
 	return oc.outside.WriteTo(p, host.Remote)
 }
 
@@ -214,21 +215,25 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		return
 	}
 
-	oc.logger.WithField("远程地址", addr).
-		WithField("源地址", pk.LocalIP).
-		WithField("目标地址", pk.RemoteIP).
-		WithField("数据包", pk).
-		//WithField("原始数据", p).
-		Debug("入站流量")
+	//oc.logger.WithField("远程地址", addr).
+	//	WithField("源地址", pk.LocalIP).
+	//	WithField("目标地址", pk.RemoteIP).
+	//	WithField("数据包", pk).
+	//	Info("入站流量")
 
 	switch h.MessageType {
 	case header.Handshake:
 		oc.logger.
 			WithField("握手数据包", pk).
 			WithField("远程地址", addr).
-			Debug("收到握手数据包")
+			Info("收到握手数据包")
 		oc.handleHandshake(addr, pk, h, p)
 	case header.Message:
+		oc.logger.WithField("远程地址", addr).
+			WithField("源地址", pk.LocalIP).
+			WithField("目标地址", pk.RemoteIP).
+			WithField("数据包", pk).
+			Info("入站消息流量")
 		out := p
 		p = p[header.Len:]
 
