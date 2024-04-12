@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
@@ -134,7 +133,6 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 
 // handshakeAllHosts 对所有主机进行握手
 func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
-	fmt.Println("hc.mainHostMap.GetAllHostMap() => ", hc.mainHostMap.GetAllHostMap())
 	for vip, host := range hc.mainHostMap.GetAllHostMap() {
 		handshakePacket, err := hc.buildHostHandshakePacket(vip)
 		if err != nil {
@@ -214,13 +212,13 @@ func (hc *HandshakeController) Handshake(vip api.VpnIp, packet []byte) error {
 	hc.handshakeHosts[vip] = &HandshakeHostInfo{
 		packet:    packet,
 		StartTime: time.Now(),
-		HostInfo: &host.HostInfo{
-			Remote:        nil,
-			Remotes:       host.RemoteList{},
-			RemoteIndexId: 0,
-			LocalIndexId:  0,
-			VpnIp:         vip,
-		},
+		//HostInfo: &host.HostInfo{
+		//	Remote:        nil,
+		//	Remotes:       host.RemoteList{},
+		//	RemoteIndexId: 0,
+		//	LocalIndexId:  0,
+		//	VpnIp:         vip,
+		//},
 	}
 
 	// 触发发送握手消息
