@@ -20,3 +20,10 @@ func (a Addr) NetAddr() net.Addr {
 		Port: int(a.Port),
 	}
 }
+
+func (a Addr) Copy() *Addr {
+	return &Addr{
+		IP:   a.IP.To4(),
+		Port: a.Port,
+	}
+}

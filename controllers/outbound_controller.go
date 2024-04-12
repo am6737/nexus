@@ -256,7 +256,6 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
 	oc.hosts.AddHost(pk.RemoteIP, addr)
-	//oc.handshakeHosts.PrintHosts()
 	switch h.MessageSubtype {
 	case header.HostSync:
 		hp, _ := json.Marshal(oc.hosts.GetAllHostMap())
@@ -266,7 +265,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			return
 		}
 		oc.logger.
-			WithField("RemoteIP", pk.RemoteIP).
+			WithField("remoteIP", pk.RemoteIP).
 			WithField("addr", addr).
 			Debug("发送主机同步回复数据包")
 		if err := oc.outside.WriteTo(replyPacket, addr); err != nil {
@@ -347,12 +346,7 @@ func (oc *OutboundController) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 func (oc *OutboundController) Listen(internalWriter interfaces.InsideWriter) {
 	runtime.LockOSThread()
 	oc.outside.ListenOut(func(addr *udp.Addr, out []byte, p []byte, h *header.Header) {
-		copiedAddr := &udp.Addr{
-			IP:   make(net.IP, len(addr.IP)),
-			Port: addr.Port,
-		}
-		copy(copiedAddr.IP, addr.IP)
-		oc.handlePacket(copiedAddr, p, h, internalWriter)
+		oc.handlePacket(addr.Copy(), p, h, internalWriter)
 	})
 }
 
