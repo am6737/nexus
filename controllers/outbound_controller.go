@@ -259,6 +259,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 	switch h.MessageSubtype {
 	case header.HostSync:
 		hp, _ := json.Marshal(oc.hosts.GetAllHostMap())
+		fmt.Println("hp => ", hp)
 		replyPacket, err := oc.buildHandshakeHostSyncReplyPacket(pk.RemoteIP, hp)
 		if err != nil {
 			oc.logger.WithError(err).Error("构建握手数据包出错")
