@@ -255,11 +255,13 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 }
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
-	//oc.hosts.AddHost(pk.RemoteIP, addr)
 	switch h.MessageSubtype {
 	case header.HostSync:
+		oc.hosts.AddHost(pk.RemoteIP, addr)
+		if len(oc.hosts.GetAllHostMap()) <= 0 {
+			return
+		}
 		hp, _ := json.Marshal(oc.hosts.GetAllHostMap())
-		fmt.Println("hp => ", hp)
 		replyPacket, err := oc.buildHandshakeHostSyncReplyPacket(pk.RemoteIP, hp)
 		if err != nil {
 			oc.logger.WithError(err).Error("构建握手数据包出错")
@@ -306,9 +308,9 @@ func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIp, d
 	var buf bytes.Buffer
 	buf.Write(handshakePacket)
 	buf.Write(pv4Packet)
-	if len(data) < 4 {
-		data = make([]byte, 4)
-	}
+	//if len(data) < 4 {
+	//	data = make([]byte, 4)
+	//}
 	buf.Write(data)
 	return buf.Bytes(), nil
 }

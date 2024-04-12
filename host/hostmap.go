@@ -144,6 +144,7 @@ func (hm *HostMap) queryVpnIp(vpnIp api.VpnIp) *HostInfo {
 func (hm *HostMap) GetAllHostMap() map[api.VpnIp]*HostInfo {
 	hm.RLock()
 	defer hm.RUnlock()
+	fmt.Println(" hm.hosts => ", hm.hosts)
 	hosts := make(map[api.VpnIp]*HostInfo)
 	for vpnIP, hostInfo := range hm.hosts {
 		hosts[vpnIP] = hostInfo
