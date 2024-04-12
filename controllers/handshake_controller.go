@@ -103,7 +103,7 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 	hc.syncLighthouse(ctx)
 
 	go func() {
-		handshakeHostTicker := time.NewTicker(10 * time.Second)
+		handshakeHostTicker := time.NewTicker(30 * time.Second)
 		defer handshakeHostTicker.Stop()
 		for {
 			select {
