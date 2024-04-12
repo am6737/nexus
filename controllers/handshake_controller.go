@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
@@ -133,6 +134,7 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 
 // handshakeAllHosts 对所有主机进行握手
 func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
+	fmt.Println("hc.mainHostMap.GetAllHostMap() => ", hc.mainHostMap.GetAllHostMap())
 	for vip, host := range hc.mainHostMap.GetAllHostMap() {
 		handshakePacket, err := hc.buildHostHandshakePacket(vip)
 		if err != nil {
