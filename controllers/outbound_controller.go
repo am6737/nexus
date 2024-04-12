@@ -255,7 +255,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 }
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
-	oc.hosts.AddHost(pk.RemoteIP, addr)
+	//oc.hosts.AddHost(pk.RemoteIP, addr)
 	switch h.MessageSubtype {
 	case header.HostSync:
 		hp, _ := json.Marshal(oc.hosts.GetAllHostMap())
@@ -305,6 +305,10 @@ func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIp, d
 	var buf bytes.Buffer
 	buf.Write(handshakePacket)
 	buf.Write(pv4Packet)
+	if len(data) < 4 {
+		b := make([]byte, 4)
+		buf.Write(b)
+	}
 	buf.Write(data)
 	return buf.Bytes(), nil
 }
