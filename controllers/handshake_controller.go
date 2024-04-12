@@ -126,7 +126,7 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case <-syncLighthouseTicker.C:
-				hc.handshakeAllHosts(ctx)
+				hc.syncLighthouse(ctx)
 			}
 		}
 	}()
@@ -265,7 +265,7 @@ func (hc *HandshakeController) handleOutbound(hr HandshakeRequest, lighthouseTri
 			WithField("vpnIP", hr.VIP).
 			WithField("addr", remoteAddr).
 			WithField("localIndex", hc.localIndexID).
-			//WithField("counter", handshakeHostInfo.Counter).
+			WithField("counter", handshakeHostInfo.Counter).
 			Info("sent handshake packet")
 		netRemoteAddrList = append(netRemoteAddrList,
 			&net.UDPAddr{
