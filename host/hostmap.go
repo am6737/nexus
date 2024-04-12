@@ -91,8 +91,9 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 
 	if _, ok := hm.hosts[vpnIP]; !ok {
 		hm.logger.
+			WithField("vpnIP", vpnIP).
 			WithField("addr", udpAddr).
-			Info("Adding new host: %s", vpnIP)
+			Info("Adding new host")
 	}
 
 	hm.hosts[vpnIP] = &HostInfo{
