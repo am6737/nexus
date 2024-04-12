@@ -204,10 +204,11 @@ func (hc *HandshakeController) Handshake(vip api.VpnIp, packet []byte) error {
 	defer hc.Unlock()
 
 	// 检查是否已经存在相同 VPN IP 的握手信息
-	_, exists := hc.handshakeHosts[vip]
-	if exists {
-		return nil
-	}
+	//h, exists := hc.handshakeHosts[vip]
+	//if exists {
+	//	h.packet = packet
+	//	return nil
+	//}
 
 	//创建新的握手主机信息
 	hc.handshakeHosts[vip] = &HandshakeHostInfo{
