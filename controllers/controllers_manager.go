@@ -6,6 +6,7 @@ import (
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
 	"github.com/am6737/nexus/host"
+	"github.com/am6737/nexus/rules"
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/tun"
 	"github.com/sirupsen/logrus"
@@ -48,6 +49,8 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 	}
 	udpServer.ReloadConfig(config)
 
+	rulesEngine := rules.NewRules(config.Outbound, config.Inbound)
+
 	// Initialize inbound controller
 	inboundLogger := logger.WithField("controller", "Inbound")
 	inboundController := &InboundController{
@@ -56,6 +59,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		localVpnIP: localVpnIP,
 		inside:     tun,
 		logger:     inboundLogger.Logger,
+		rules:      rulesEngine,
 	}
 
 	// Initialize outbound controller

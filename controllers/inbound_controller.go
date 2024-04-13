@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
@@ -12,6 +13,7 @@ import (
 	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
 	"io"
+	"net"
 	"os"
 	"runtime"
 	"sync/atomic"
@@ -31,6 +33,7 @@ type InboundController struct {
 	inside     tun.Device
 	logger     *logrus.Logger
 	cfg        *config.Config
+	rules      interfaces.RulesEngine
 }
 
 func (ic *InboundController) Start(ctx context.Context) error {
@@ -76,7 +79,8 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 		return
 	}
 	//
-	//fmt.Println("data => ", data)
+	fmt.Println("data => ", data)
+	fmt.Println("pk => ", packet)
 	//fmt.Println("len(data) => ", len(data))
 
 	if packet.RemoteIP == ic.localVpnIP {
@@ -94,18 +98,53 @@ func (ic *InboundController) consumeInsidePacket(data []byte, packet *packet.Pac
 		return
 	}
 
-	//ic.logger.WithField("源地址", packet.LocalIP.String()).
-	//	WithField("目标地址", packet.RemoteIP.String()).
-	//	Info("流量从本地tun设备转发到远程udp设备")
-
-	//if err := ic.outside.WriteTo(data, host.Remote); err != nil {
-	//	ic.logger.WithError(err).Error("Failed to forward to udp")
+	// Check the rules
+	if err := ic.rules.Inbound(packet); err != nil {
+		ic.logger.WithError(err).Warn("Dropped packet due to rule")
+		return
+	}
+	//ruleAction := ic.checkRules(packet)
+	//if ruleAction == "deny" {
+	//	ic.logger.WithFields(logrus.Fields{
+	//		"sourceIP": packet.LocalIP,
+	//		"destIP":   packet.RemoteIP,
+	//		"protocol": packet.Protocol,
+	//		"port":     packet.RemotePort,
+	//	}).Warn("Dropped packet due to rule")
+	//	return
 	//}
 
 	if err := externalWriter.WriteToVIP(data, packet.RemoteIP); err != nil {
 		ic.logger.WithError(err).Error("Error while forwarding outbound packet")
 		return
 	}
+}
+
+func (ic *InboundController) checkRules(p *packet.Packet) string {
+	// Implement the logic to check the rules and return the appropriate action
+	for _, rule := range ic.cfg.Inbound {
+		//fmt.Println("rule.Proto => ", rule.Proto)
+		//fmt.Println("packet.TypeName(p.Protocol)  => ", packet.TypeName(p.Protocol))
+		//fmt.Println("rule.Port.ToUint16() => ", rule.Port.ToUint16())
+		//fmt.Println("p.RemotePort => ", p.RemotePort)
+		if (rule.Proto == packet.TypeName(p.Protocol) || rule.Proto == "any") && rule.Port.ToUint16() == p.RemotePort {
+			if len(rule.Host) == 0 {
+				return rule.Action
+			}
+			for _, host := range rule.Host {
+				_, network, err := net.ParseCIDR(host)
+				if err == nil {
+					if network.Contains(p.RemoteIP.ToNetIP()) {
+						return rule.Action
+					}
+				} else if host == p.RemoteIP.String() {
+					return rule.Action
+				}
+			}
+		}
+	}
+	// Default to deny if no matching rule is found
+	return "deny"
 }
 
 func (ic *InboundController) Close() error {

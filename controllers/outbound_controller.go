@@ -29,6 +29,7 @@ type OutboundController struct {
 	logger      *logrus.Logger
 	cfg         *config.Config
 	lighthouse  interfaces.LighthouseController
+	rules       interfaces.RulesEngine
 }
 
 func (oc *OutboundController) WriteToAddr(p []byte, addr net.Addr) error {
@@ -237,6 +238,12 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}
+
+	if err := oc.rules.Outbound(pk); err != nil {
+		oc.logger.WithError(err).Error("规则拒绝")
+		return
+	}
+
 	switch h.MessageSubtype {
 	case header.HostSync:
 		oc.logger.
@@ -385,7 +392,7 @@ func (oc *OutboundController) handleTest(addr *udp.Addr, pk *packet.Packet, h *h
 		oc.logger.
 			WithField("remoteIP", pk.RemoteIP).
 			WithField("addr", addr).
-			Debug("收到打洞请求")
+			Debug("收到测试消息")
 		replyPacket, err := oc.buildTestReplyPacket(pk.RemoteIP)
 		if err != nil {
 			return

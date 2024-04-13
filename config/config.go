@@ -1,8 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
+	"strconv"
 	"time"
 )
 
@@ -12,6 +14,8 @@ type Config struct {
 	Listen        ListenConfig        `yaml:"listen"`
 	Tun           TunConfig           `yaml:"tun"`
 	Handshake     HandshakeConfig     `yaml:"handshake"`
+	Outbound      []OutboundRule      `yaml:"outbound"`
+	Inbound       []InboundRule       `yaml:"inbound"`
 }
 
 type LighthouseConfig struct {
@@ -50,10 +54,60 @@ type TunConfig struct {
 
 // HandshakeConfig 握手配置
 type HandshakeConfig struct {
-	TryInterval   time.Duration // 尝试间隔
-	Retries       int           // 尝试次数
-	TriggerBuffer int           // 触发缓冲
-	UseRelays     bool          // 是否使用中继
+	HandshakeHost  time.Duration
+	SyncLighthouse time.Duration
+	TryInterval    time.Duration // 尝试间隔
+	Retries        int           // 尝试次数
+	TriggerBuffer  int           // 触发缓冲
+	UseRelays      bool          // 是否使用中继
+}
+
+type OutboundRule struct {
+	Port  AnyPort  `yaml:"port"`
+	Proto string   `yaml:"proto"`
+	Host  []string `yaml:"host"`
+	// "allow" or "deny"
+	Action string `yaml:"action"`
+}
+
+type InboundRule struct {
+	Port  AnyPort  `yaml:"port"`
+	Proto string   `yaml:"proto"`
+	Host  []string `yaml:"host"`
+	// "allow" or "deny"
+	Action string `yaml:"action"`
+}
+
+type AnyPort uint16
+
+const AnyPortValue AnyPort = 0
+
+func (p AnyPort) ToUint16() uint16 {
+	return uint16(p)
+}
+
+func (p *AnyPort) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var v interface{}
+	if err := unmarshal(&v); err != nil {
+		return err
+	}
+	switch value := v.(type) {
+	case string:
+		if value == "any" {
+			*p = AnyPortValue
+		} else {
+			port, err := strconv.ParseUint(value, 10, 16)
+			if err != nil {
+				return err
+			}
+			*p = AnyPort(port)
+		}
+	case int, int32, int64:
+		*p = AnyPort(value.(int))
+	default:
+		return fmt.Errorf("invalid port value: %v", v)
+	}
+	return nil
 }
 
 func Load(filename string) (*Config, error) {

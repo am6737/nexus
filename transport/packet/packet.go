@@ -25,6 +25,7 @@ var protocolMap = map[uint8]string{
 	ProtoTCP:  "tcp",
 	ProtoUDP:  "udp",
 	ProtoICMP: "icmp",
+	ProtoAny:  "any",
 }
 
 func TypeName(t uint8) string {

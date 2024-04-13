@@ -103,7 +103,7 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 	hc.syncLighthouse(ctx)
 
 	go func() {
-		handshakeHostTicker := time.NewTicker(30 * time.Second)
+		handshakeHostTicker := time.NewTicker(hc.config.HandshakeHost)
 		defer handshakeHostTicker.Stop()
 		for {
 			select {
@@ -116,7 +116,7 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 	}()
 
 	go func() {
-		syncLighthouseTicker := time.NewTicker(60 * time.Second)
+		syncLighthouseTicker := time.NewTicker(hc.config.SyncLighthouse)
 		defer syncLighthouseTicker.Stop()
 		for {
 			select {
@@ -355,10 +355,12 @@ func hsTimeout(tries int, interval time.Duration) time.Duration {
 
 // DefaultHandshakeConfig 是默认的 HandshakeConfig 配置
 var DefaultHandshakeConfig = config.HandshakeConfig{
-	TryInterval:   10 * time.Second, // 尝试间隔为10秒
-	Retries:       3,                // 尝试次数为3次
-	TriggerBuffer: 10,               // 触发缓冲为10
-	UseRelays:     false,            // 不使用中继
+	HandshakeHost:  30 * time.Second,
+	SyncLighthouse: 60 * time.Second,
+	TryInterval:    10 * time.Second, // 尝试间隔为10秒
+	Retries:        3,                // 尝试次数为3次
+	TriggerBuffer:  10,               // 触发缓冲为10
+	UseRelays:      false,            // 不使用中继
 }
 
 // ApplyDefaultHandshakeConfig 将提供的 HandshakeConfig 按照默认配置进行填充，并返回填充后的结果
@@ -367,6 +369,14 @@ func ApplyDefaultHandshakeConfig(config *config.HandshakeConfig) *config.Handsha
 
 	if config == nil {
 		return &defaultConfig
+	}
+
+	if config.HandshakeHost == 0 {
+		config.HandshakeHost = defaultConfig.HandshakeHost
+	}
+
+	if config.SyncLighthouse == 0 {
+		config.SyncLighthouse = defaultConfig.SyncLighthouse
 	}
 
 	// 检查 TryInterval 是否为零值或者为默认值，如果是，则使用默认值
