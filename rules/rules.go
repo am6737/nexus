@@ -2,6 +2,7 @@ package rules
 
 import (
 	"errors"
+	"fmt"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
 	"github.com/am6737/nexus/transport/packet"
@@ -73,7 +74,8 @@ func (r *Rules) Outbound(p *packet.Packet) error {
 		}
 
 		if rule.Action == "deny" {
-			return ErrDrop // Packet should be dropped
+			return errors.New(fmt.Sprintf("dropped packet due to rule: %v", rule))
+			//return ErrDrop // Packet should be dropped
 		}
 
 		return nil // Packet should be allowed
@@ -115,7 +117,8 @@ func (r *Rules) Inbound(p *packet.Packet) error {
 		}
 
 		if rule.Action == "deny" {
-			return ErrDrop // Packet should be dropped
+			return errors.New(fmt.Sprintf("dropped packet due to rule: %v", rule))
+			//return ErrDrop // Packet should be dropped
 		}
 
 		return nil // Packet should be allowed
