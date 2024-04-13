@@ -178,13 +178,6 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 		return
 	}
 
-	// 解析数据包
-	// 将incoming参数设置为true
-	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
-		oc.logger.WithError(err).Debug("解析数据包出错")
-		return
-	}
-
 	//oc.logger.WithField("远程地址", addr).
 	//	WithField("源地址", pk.LocalIP).
 	//	WithField("目标地址", pk.RemoteIP).
@@ -192,6 +185,8 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 	//	Info("入站流量")
 
 	switch h.MessageType {
+	case header.Test:
+		oc.handleTest(addr, pk, h, p)
 	case header.Handshake:
 		oc.handleHandshake(addr, pk, h, p)
 	case header.Message:
@@ -204,6 +199,12 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 }
 
 func (oc *OutboundController) handleInboundPacket(h *header.Header, p []byte, pk *packet.Packet, addr *udp.Addr, internalWriter io.Writer) {
+	// 解析数据包
+	// 将incoming参数设置为true
+	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
+		oc.logger.WithError(err).Debug("解析数据包出错")
+		return
+	}
 	oc.logger.WithField("远程地址", addr).
 		WithField("源地址", pk.LocalIP).
 		WithField("目标地址", pk.RemoteIP).
@@ -230,6 +231,12 @@ func (oc *OutboundController) handleInboundPacket(h *header.Header, p []byte, pk
 }
 
 func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
+	// 解析数据包
+	// 将incoming参数设置为true
+	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
+		oc.logger.WithError(err).Debug("解析数据包出错")
+		return
+	}
 	switch h.MessageSubtype {
 	case header.HostSync:
 		oc.logger.
@@ -272,7 +279,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 				WithField("remoteIP", i).
 				WithField("addr", i2.Remote).
 				Info("收到的同步地址信息")
-			punchPacket, err := oc.buildHostPunchPacket(i)
+			punchPacket, err := oc.buildTestRequestPacket(i)
 			if err != nil {
 				oc.logger.WithError(err).Error("buildTestPacket")
 				return
@@ -283,29 +290,12 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			oc.logger.
 				WithField("remoteIP", i).
 				WithField("addr", i2.Remote).
-				Info("发送打洞消息")
+				Debug("发送测试消息")
 			if err := oc.outside.WriteTo(punchPacket, i2.Remote); err != nil {
 				oc.logger.WithError(err).Error("数据转发到远程")
 			}
 			oc.hosts.UpdateHost(i, i2.Remote)
 		}
-	case header.HostPunch:
-		if oc.lighthouse.IsLighthouse() {
-			return
-		}
-		oc.logger.
-			WithField("remoteIP", pk.RemoteIP).
-			WithField("addr", addr).
-			Info("收到打洞请求")
-		empty := []byte{0}
-		if err := oc.outside.WriteTo(empty, addr); err != nil {
-			oc.logger.WithError(err).Error("数据转发到远程")
-		}
-	//case header.HostPunchReply:
-	//	oc.logger.
-	//		WithField("p", p).
-	//		WithField("远程地址", addr).
-	//		Info("收到打洞回复消息")
 	default:
 		//oc.hosts.UpdateHost(pk.RemoteIP, addr)
 	}
@@ -359,6 +349,12 @@ func (oc *OutboundController) handleLocalVpnAddress(p []byte, pk *packet.Packet,
 
 // 处理目标地址是灯塔的情况
 func (oc *OutboundController) handleLighthouses(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
+	// 解析数据包
+	// 将incoming参数设置为true
+	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
+		oc.logger.WithError(err).Debug("解析数据包出错")
+		return
+	}
 	oc.lighthouse.HandleRequest(addr, pk.LocalIP, h, p)
 	//for _, lighthouse := range oc.lighthouses {
 	//	if lighthouse != nil {
@@ -374,12 +370,45 @@ func (oc *OutboundController) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 	//}
 }
 
+func (oc *OutboundController) handleTest(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
+	switch h.MessageSubtype {
+	case header.TestRequest:
+		if oc.lighthouse.IsLighthouse() {
+			return
+		}
+		oc.logger.
+			WithField("remoteIP", pk.RemoteIP).
+			WithField("addr", addr).
+			Debug("收到打洞请求")
+		replyPacket, err := oc.buildTestReplyPacket(pk.RemoteIP)
+		if err != nil {
+			return
+		}
+		if err := oc.outside.WriteTo(replyPacket, addr); err != nil {
+			oc.logger.WithError(err).Error("数据转发到远程")
+		}
+	case header.TestReply:
+		oc.logger.
+			WithField("p", p).
+			WithField("远程地址", addr).
+			Debug("收到打洞回复消息")
+	}
+}
+
 func (oc *OutboundController) buildHostPunchReplyPacket(vip api.VpnIP) ([]byte, error) {
 	return oc.buildPacket(vip, header.Handshake, header.HostPunchReply)
 }
 
 func (oc *OutboundController) buildHostPunchPacket(vip api.VpnIP) ([]byte, error) {
 	return oc.buildPacket(vip, header.Handshake, header.HostPunch)
+}
+
+func (oc *OutboundController) buildTestRequestPacket(vip api.VpnIP) ([]byte, error) {
+	return oc.buildPacket(vip, header.Test, header.TestRequest)
+}
+
+func (oc *OutboundController) buildTestReplyPacket(vip api.VpnIP) ([]byte, error) {
+	return oc.buildPacket(vip, header.Test, header.TestReply)
 }
 
 func (oc *OutboundController) buildPacket(vip api.VpnIP, mt header.MessageType, mst header.MessageSubType) ([]byte, error) {

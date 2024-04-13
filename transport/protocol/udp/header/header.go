@@ -21,7 +21,11 @@ const (
 	Close
 	Control
 	Test
-	TestReply
+)
+
+const (
+	TestRequest MessageSubType = 0
+	TestReply   MessageSubType = 1
 )
 
 const (
