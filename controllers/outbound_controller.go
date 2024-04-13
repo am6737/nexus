@@ -206,6 +206,12 @@ func (oc *OutboundController) handleInboundPacket(h *header.Header, p []byte, pk
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}
+
+	if err := oc.rules.Outbound(pk); err != nil {
+		oc.logger.WithError(err).Error("规则拒绝")
+		return
+	}
+
 	oc.logger.WithField("远程地址", addr).
 		WithField("源地址", pk.LocalIP).
 		WithField("目标地址", pk.RemoteIP).
@@ -362,6 +368,12 @@ func (oc *OutboundController) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}
+
+	if err := oc.rules.Outbound(pk); err != nil {
+		oc.logger.WithError(err).Error("规则拒绝")
+		return
+	}
+
 	oc.lighthouse.HandleRequest(addr, pk.LocalIP, h, p)
 	//for _, lighthouse := range oc.lighthouses {
 	//	if lighthouse != nil {
