@@ -185,7 +185,7 @@ func (p *Packet) Encode() []byte {
 	ipHeader := make([]byte, 20)
 	// 版本号和头部长度（20 字节）
 	ipHeader[0] = 0x45
-	binary.BigEndian.PutUint16(data[2:4], 20) // Total Length
+	//binary.BigEndian.PutUint16(data[2:4], 20) // Total Length
 	// TTL 设置为 64
 	ipHeader[8] = 0x40
 	// 协议类型
