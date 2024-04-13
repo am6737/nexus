@@ -371,6 +371,12 @@ func (oc *OutboundController) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 }
 
 func (oc *OutboundController) handleTest(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
+	// 解析数据包
+	// 将incoming参数设置为true
+	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
+		oc.logger.WithError(err).Debug("解析数据包出错")
+		return
+	}
 	switch h.MessageSubtype {
 	case header.TestRequest:
 		if oc.lighthouse.IsLighthouse() {
@@ -389,9 +395,9 @@ func (oc *OutboundController) handleTest(addr *udp.Addr, pk *packet.Packet, h *h
 		}
 	case header.TestReply:
 		oc.logger.
-			WithField("p", p).
+			WithField("remoteIP", pk.RemoteIP).
 			WithField("远程地址", addr).
-			Debug("收到打洞回复消息")
+			Debug("收到测试回复消息")
 	}
 }
 
