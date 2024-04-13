@@ -1,7 +1,6 @@
 package rules
 
 import (
-	"errors"
 	"fmt"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
@@ -12,7 +11,8 @@ import (
 var _ interfaces.RulesEngine = &Rules{}
 
 var (
-	ErrDrop = errors.New("dropped packet due to rule")
+	ErrDrop        = "dropped packet due to rule"
+	defaultErrDrop = "default action is deny"
 )
 
 func NewRules(outboundRules []config.OutboundRule, inboundRules []config.InboundRule, opts ...RuleOption) *Rules {
@@ -74,15 +74,14 @@ func (r *Rules) Outbound(p *packet.Packet) error {
 		}
 
 		if rule.Action == "deny" {
-			return errors.New(fmt.Sprintf("dropped packet due to rule: %v", rule))
-			//return ErrDrop // Packet should be dropped
+			return fmt.Errorf("%s: %v", ErrDrop, rule)
 		}
 
 		return nil // Packet should be allowed
 	}
 
 	if r.defaultAction == "deny" {
-		return ErrDrop
+		return fmt.Errorf("%s: %v", ErrDrop, defaultErrDrop)
 	}
 	return nil
 }
@@ -117,8 +116,7 @@ func (r *Rules) Inbound(p *packet.Packet) error {
 		}
 
 		if rule.Action == "deny" {
-			return errors.New(fmt.Sprintf("dropped packet due to rule: %v", rule))
-			//return ErrDrop // Packet should be dropped
+			return fmt.Errorf("%s: %v", ErrDrop, rule)
 		}
 
 		return nil // Packet should be allowed
@@ -126,7 +124,7 @@ func (r *Rules) Inbound(p *packet.Packet) error {
 
 	// 根据 defaultAction 决定是否拒绝或允许
 	if r.defaultAction == "deny" {
-		return ErrDrop
+		return fmt.Errorf("%s: %v", ErrDrop, defaultErrDrop)
 	}
 	return nil
 }
