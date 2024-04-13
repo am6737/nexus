@@ -23,11 +23,12 @@ var (
 
 var _ interfaces.LighthouseController = &LighthouseController{}
 
-func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow interfaces.OutsideWriter) *LighthouseController {
+func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow interfaces.OutsideWriter, isLighthouse bool) *LighthouseController {
 	return &LighthouseController{
-		logger: logger,
-		host:   host,
-		ow:     ow,
+		logger:       logger,
+		host:         host,
+		ow:           ow,
+		isLighthouse: isLighthouse,
 		//handshakeHosts:       make(map[api.VpnIP]*host.HostInfo),
 		queryQueue:  make(chan api.VpnIP, 1000),
 		queryWorker: &sync.WaitGroup{},
@@ -43,6 +44,12 @@ type LighthouseController struct {
 	logger      *logrus.Logger
 
 	ow interfaces.OutsideWriter
+
+	isLighthouse bool
+}
+
+func (lc *LighthouseController) IsLighthouse() bool {
+	return lc.isLighthouse
 }
 
 func (lc *LighthouseController) HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIP, h *header.Header, p []byte) {

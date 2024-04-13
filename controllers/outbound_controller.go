@@ -85,35 +85,6 @@ func (oc *OutboundController) SendToRemote(out []byte, addr *udp.Addr) error {
 	return oc.outside.WriteTo(out, addr)
 }
 
-func (oc *OutboundController) Send(out []byte, vip api.VpnIP) error {
-	messagePacket, err := header.BuildMessage(9527, 111)
-	if err != nil {
-		return err
-	}
-
-	// 创建新的数据包，将头部和数据包拼接
-	out = append(messagePacket, out...)
-
-	host := oc.hosts.QueryVpnIp(vip)
-	if host == nil {
-		for _, lighthouse := range oc.lighthouses {
-			if lighthouse != nil {
-				oc.logger.WithField("目标地址", vip).
-					WithField("灯塔地址", lighthouse.Remote).
-					Info("出站流量转发到灯塔 OutboundController => Lighthouse")
-				return oc.outside.WriteTo(out, lighthouse.Remote)
-			}
-		}
-		return fmt.Errorf("host %s not found", vip)
-	}
-
-	oc.logger.WithField("目标地址", vip).
-		WithField("目标远程地址", host.Remote).
-		WithField("数据包", out).
-		Info("出站流量")
-	return oc.outside.WriteTo(out, host.Remote)
-}
-
 func (oc *OutboundController) Start(ctx context.Context) error {
 	//// 解析监听主机地址
 	//listenHost, err := resolveListenHost(oc.cfg.Listen.Host)
@@ -306,6 +277,9 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 				oc.logger.WithError(err).Error("buildTestPacket")
 				return
 			}
+			if oc.lighthouse.IsLighthouse() || oc.IsLighthouse(i) {
+				return
+			}
 			oc.logger.
 				WithField("remoteIP", i).
 				WithField("addr", i2.Remote).
@@ -316,6 +290,9 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			oc.hosts.UpdateHost(i, i2.Remote)
 		}
 	case header.HostPunch:
+		if oc.lighthouse.IsLighthouse() {
+			return
+		}
 		oc.logger.
 			WithField("remoteIP", pk.RemoteIP).
 			WithField("addr", addr).
@@ -352,6 +329,16 @@ func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIP, d
 	//}
 	buf.Write(data)
 	return buf.Bytes(), nil
+}
+
+// IsLighthouse 判断指定的 VPN IP 地址是否对应一个灯塔节点
+func (oc *OutboundController) IsLighthouse(vpnIP api.VpnIP) bool {
+	for _, lh := range oc.lighthouses {
+		if lh.VpnIp == vpnIP {
+			return true
+		}
+	}
+	return false
 }
 
 // 更新 remotes 映射表

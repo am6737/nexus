@@ -64,4 +64,7 @@ type LighthouseController interface {
 	Store(info *host.HostInfo) error
 
 	HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIP, h *header.Header, p []byte)
+
+	// IsLighthouse 判断当前节点是否是灯塔节点
+	IsLighthouse() bool
 }

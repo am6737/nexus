@@ -107,6 +107,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		logger.WithField("controller", "Lighthouse").Logger,
 		hosts,
 		outboundController,
+		config.Lighthouse.Enabled,
 	)
 	outboundController.lighthouse = lighthouseController
 
