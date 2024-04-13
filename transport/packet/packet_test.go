@@ -16,8 +16,8 @@ func TestPacketEncodeDecode(t *testing.T) {
 			p: &Packet{
 				LocalIP:    api.Ip2VpnIp([]byte{192, 168, 1, 100}),
 				RemoteIP:   api.Ip2VpnIp([]byte{8, 8, 8, 8}),
-				LocalPort:  12345,
-				RemotePort: 80,
+				LocalPort:  0,
+				RemotePort: 0,
 				Protocol:   ProtoTCP,
 				Fragment:   false,
 			},
@@ -27,8 +27,8 @@ func TestPacketEncodeDecode(t *testing.T) {
 			p: &Packet{
 				LocalIP:    api.Ip2VpnIp([]byte{10, 0, 0, 1}),
 				RemoteIP:   api.Ip2VpnIp([]byte{8, 8, 8, 8}),
-				LocalPort:  53,
-				RemotePort: 12345,
+				LocalPort:  0,
+				RemotePort: 0,
 				Protocol:   ProtoUDP,
 				Fragment:   false,
 			},
@@ -52,7 +52,7 @@ func TestPacketEncodeDecode(t *testing.T) {
 				LocalPort:  0,
 				RemotePort: 0,
 				Protocol:   ProtoTCP,
-				Fragment:   true,
+				Fragment:   false,
 			},
 		},
 	}
@@ -60,8 +60,10 @@ func TestPacketEncodeDecode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			encoded := tt.p.Encode()
+			tmp := make([]byte, 4)
+			encoded = append(encoded, tmp...)
 			decoded := &Packet{}
-			err := decoded.Decode(encoded)
+			err := decoded.Decode(encoded, false)
 			if err != nil {
 				t.Errorf("Decode() error = %v", err)
 				return

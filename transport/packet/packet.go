@@ -155,7 +155,7 @@ func ParsePacket(data []byte, incoming bool, p *Packet) error {
 }
 
 func (p *Packet) Encode() []byte {
-	data := make([]byte, 20)
+	//data := make([]byte, 20)
 	// IPv4 header format:
 	// 0-3 bits: Version
 	// 4-7 bits: IHL (IP Header Length)
@@ -200,41 +200,67 @@ func (p *Packet) Encode() []byte {
 	}
 	checksum := calculateChecksum(ipHeader)
 	binary.BigEndian.PutUint16(ipHeader[10:12], checksum)
-	return data
+	return ipHeader
 }
 
-func (p *Packet) Decode(data []byte) error {
-	if len(data) < 20 {
-		return fmt.Errorf("packet data is less than 20 bytes")
+func (p *Packet) Decode(data []byte, incoming bool) error {
+	// Do we at least have an ipv4 header worth of data?
+	if len(data) < ipv4.HeaderLen {
+		return fmt.Errorf("packet is less than %v bytes", ipv4.HeaderLen)
 	}
 
-	// Check if it's an IPv4 packet
-	if (data[0] >> 4) != 4 {
-		return fmt.Errorf("packet is not IPv4")
+	// Is it an ipv4 packet?
+	if int((data[0]>>4)&0x0f) != 4 {
+		return fmt.Errorf("packet is not ipv4, type: %v", int((data[0]>>4)&0x0f))
 	}
 
-	// Extract the IP header length
-	ihl := int(data[0]&0x0F) * 4
+	// Adjust our start position based on the advertised ip header length
+	ihl := int(data[0]&0x0f) << 2
 
-	// Extract the protocol
+	// Well formed ip header length?
+	if ihl < ipv4.HeaderLen {
+		return fmt.Errorf("packet had an invalid header length: %v", ihl)
+	}
+
+	// Check if this is the second or further fragment of a fragmented packet.
+	flagsfrags := binary.BigEndian.Uint16(data[6:8])
+	p.Fragment = (flagsfrags & 0x1FFF) != 0
+
+	// Firewall handles protocol checks
 	p.Protocol = data[9]
 
-	// Extract the source and destination IP addresses
-	p.LocalIP = api.Ip2VpnIp(data[12:16])
-	p.RemoteIP = api.Ip2VpnIp(data[16:20])
-
-	// Extract the source and destination ports
-	if ihl >= 20 && (p.Protocol == ProtoTCP || p.Protocol == ProtoUDP) {
-		p.LocalPort = binary.BigEndian.Uint16(data[ihl : ihl+2])
-		p.RemotePort = binary.BigEndian.Uint16(data[ihl+2 : ihl+4])
-	} else {
-		p.LocalPort = 0
-		p.RemotePort = 0
+	// Accounting for a variable header length, do we have enough data for our src/dst tuples?
+	minLen := ihl
+	if !p.Fragment && p.Protocol != ProtoICMP {
+		minLen += minPacketLen
 	}
 
-	// Check if the packet is fragmented
-	flags := binary.BigEndian.Uint16(data[6:8])
-	p.Fragment = (flags & 0x1FFF) != 0
+	if len(data) < minLen {
+		return fmt.Errorf("packet is less than %v bytes, ip header len: %v", minLen, ihl)
+	}
+
+	// Firewall packets are locally oriented
+	if incoming {
+		p.RemoteIP = api.Ip2VpnIp(data[12:16])
+		p.LocalIP = api.Ip2VpnIp(data[16:20])
+		if p.Fragment || p.Protocol == ProtoICMP {
+			p.RemotePort = 0
+			p.LocalPort = 0
+		} else {
+			p.RemotePort = binary.BigEndian.Uint16(data[ihl : ihl+2])
+			p.LocalPort = binary.BigEndian.Uint16(data[ihl+2 : ihl+4])
+		}
+	} else {
+		p.LocalIP = api.Ip2VpnIp(data[12:16])
+		p.RemoteIP = api.Ip2VpnIp(data[16:20])
+		if p.Fragment || p.Protocol == ProtoICMP {
+			p.RemotePort = 0
+			p.LocalPort = 0
+		} else {
+			p.LocalPort = binary.BigEndian.Uint16(data[ihl : ihl+2])
+			p.RemotePort = binary.BigEndian.Uint16(data[ihl+2 : ihl+4])
+		}
+	}
 
 	return nil
 }
