@@ -78,6 +78,14 @@ type InboundRule struct {
 	Action string `yaml:"action"`
 }
 
+func (r OutboundRule) String() string {
+	return fmt.Sprintf("port=%v proto=%s hosts=%v action=%s", r.Port, r.Proto, r.Host, r.Action)
+}
+
+func (r InboundRule) String() string {
+	return fmt.Sprintf("port=%v proto=%s hosts=%v action=%s", r.Port, r.Proto, r.Host, r.Action)
+}
+
 type AnyPort uint16
 
 const AnyPortValue AnyPort = 0
