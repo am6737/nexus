@@ -70,6 +70,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		cfg:        config,
 		hosts:      hosts,
 		outside:    udpServer,
+		rules:      rulesEngine,
 	}
 
 	lighthouses := map[api.VpnIP]*host.HostInfo{}
