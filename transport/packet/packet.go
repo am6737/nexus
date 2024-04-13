@@ -91,6 +91,7 @@ const (
 )
 
 // ParsePacket 函数用于解析数据包并返回解析后的信息
+// incoming true 时表示数据包是从conn流入tun，false 表示数据包从tun流出
 func ParsePacket(data []byte, incoming bool, p *Packet) error {
 	// Do we at least have an ipv4 header worth of data?
 	if len(data) < ipv4.HeaderLen {
@@ -155,15 +156,29 @@ func ParsePacket(data []byte, incoming bool, p *Packet) error {
 
 func (p *Packet) Encode() []byte {
 	data := make([]byte, 20)
-	copy(data[0:4], p.LocalIP.ToIP())
-	copy(data[4:8], p.RemoteIP.ToIP())
-	binary.BigEndian.PutUint16(data[8:10], p.LocalPort)
-	binary.BigEndian.PutUint16(data[10:12], p.RemotePort)
-	data[12] = p.Protocol
+	// IPv4 header format:
+	// 0-3 bits: Version
+	// 4-7 bits: IHL (IP Header Length)
+	// 8-15 bits: Type of Service
+	// 16-31 bits: Total Length
+	// 32-47 bits: Identification
+	// 48-51 bits: Flags
+	// 52-63 bits: Fragment Offset
+	// 64-71 bits: Time to Live
+	// 72-79 bits: Protocol
+	// 80-111 bits: Header Checksum
+	// 112-143 bits: Source IP Address
+	// 144-175 bits: Destination IP Address
+	// 176-207 bits: Options (if any)
+
+	data[0] = 0x45                            // Version 4, IHL 5
+	binary.BigEndian.PutUint16(data[2:4], 20) // Total Length
+	data[9] = p.Protocol
+	copy(data[12:16], p.LocalIP.ToIP())
+	copy(data[16:20], p.RemoteIP.ToIP())
+	binary.BigEndian.PutUint16(data[0:2], uint16(len(data))) // Total Length
 	if p.Fragment {
-		data[13] = 1
-	} else {
-		data[13] = 0
+		data[6] |= 0x20 // Set the More Fragments flag
 	}
 	return data
 }
@@ -172,16 +187,35 @@ func (p *Packet) Decode(data []byte) error {
 	if len(data) < 20 {
 		return fmt.Errorf("packet data is less than 20 bytes")
 	}
-	p.LocalIP = api.Ip2VpnIp(data[0:4])
-	p.RemoteIP = api.Ip2VpnIp(data[4:8])
-	p.LocalPort = binary.BigEndian.Uint16(data[8:10])
-	p.RemotePort = binary.BigEndian.Uint16(data[10:12])
-	p.Protocol = data[12]
-	if data[13] == 1 {
-		p.Fragment = true
-	} else {
-		p.Fragment = false
+
+	// Check if it's an IPv4 packet
+	if (data[0] >> 4) != 4 {
+		return fmt.Errorf("packet is not IPv4")
 	}
+
+	// Extract the IP header length
+	ihl := int(data[0]&0x0F) * 4
+
+	// Extract the protocol
+	p.Protocol = data[9]
+
+	// Extract the source and destination IP addresses
+	p.LocalIP = api.Ip2VpnIp(data[12:16])
+	p.RemoteIP = api.Ip2VpnIp(data[16:20])
+
+	// Extract the source and destination ports
+	if ihl >= 20 && (p.Protocol == ProtoTCP || p.Protocol == ProtoUDP) {
+		p.LocalPort = binary.BigEndian.Uint16(data[ihl : ihl+2])
+		p.RemotePort = binary.BigEndian.Uint16(data[ihl+2 : ihl+4])
+	} else {
+		p.LocalPort = 0
+		p.RemotePort = 0
+	}
+
+	// Check if the packet is fragmented
+	flags := binary.BigEndian.Uint16(data[6:8])
+	p.Fragment = (flags & 0x1FFF) != 0
+
 	return nil
 }
 

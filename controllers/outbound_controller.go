@@ -12,7 +12,6 @@ import (
 	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/transport/protocol/udp/header"
-	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
@@ -210,7 +209,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 
 	// 解析数据包
 	// 将incoming参数设置为true
-	if err := utils.ParsePacket(p[header.Len:], true, pk); err != nil {
+	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}
