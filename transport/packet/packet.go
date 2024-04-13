@@ -123,9 +123,6 @@ func ParsePacket(data []byte, incoming bool, p *Packet) error {
 		minLen += minPacketLen
 	}
 
-	fmt.Println("len(data) => ", len(data))
-	fmt.Println("minLen => ", minLen)
-
 	if len(data) < minLen {
 		return fmt.Errorf("packet is less than %v bytes, ip header len: %v", minLen, ihl)
 	}
@@ -153,6 +150,38 @@ func ParsePacket(data []byte, incoming bool, p *Packet) error {
 		}
 	}
 
+	return nil
+}
+
+func (p *Packet) Encode() []byte {
+	data := make([]byte, 20)
+	copy(data[0:4], p.LocalIP.ToIP())
+	copy(data[4:8], p.RemoteIP.ToIP())
+	binary.BigEndian.PutUint16(data[8:10], p.LocalPort)
+	binary.BigEndian.PutUint16(data[10:12], p.RemotePort)
+	data[12] = p.Protocol
+	if p.Fragment {
+		data[13] = 1
+	} else {
+		data[13] = 0
+	}
+	return data
+}
+
+func (p *Packet) Decode(data []byte) error {
+	if len(data) < 20 {
+		return fmt.Errorf("packet data is less than 20 bytes")
+	}
+	p.LocalIP = api.Ip2VpnIp(data[0:4])
+	p.RemoteIP = api.Ip2VpnIp(data[4:8])
+	p.LocalPort = binary.BigEndian.Uint16(data[8:10])
+	p.RemotePort = binary.BigEndian.Uint16(data[10:12])
+	p.Protocol = data[12]
+	if data[13] == 1 {
+		p.Fragment = true
+	} else {
+		p.Fragment = false
+	}
 	return nil
 }
 

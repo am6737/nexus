@@ -68,7 +68,7 @@ func (lc *LighthouseController) handleHostQuery(n interface{}, ip api.VpnIP, add
 		return
 	}
 	var buf bytes.Buffer
-	h := header.BuildHostQueryReplyPacket(host.LocalIndexId, 0)
+	h := header.BuildHostQueryReply(host.LocalIndexId, 0)
 	buf.Write(h)
 	b, err := json.Marshal(host)
 	if err != nil {

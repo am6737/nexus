@@ -178,22 +178,30 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 }
 
 func (hc *HandshakeController) buildHandshakeAndHostSyncPacket(vip api.VpnIP) ([]byte, error) {
-	handshakePacket, err := generateHandshakeAndHostSyncPacket(hc.localIndexID)
-	if err != nil {
-		return nil, err
+	h, err2 := header.BuildHandshakeAndHostSync(hc.localIndexID, 0)
+	if err2 != nil {
+		return nil, err2
 	}
 
-	pv4Packet, err := packet.BuildIPv4Packet(hc.localVIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
-	if err != nil {
-		return nil, err
-	}
+	p := (&packet.Packet{
+		LocalIP:    hc.localVIP,
+		RemoteIP:   vip,
+		LocalPort:  0,
+		RemotePort: 0,
+		Protocol:   packet.ProtoUDP,
+		Fragment:   false,
+	}).Encode()
 
 	var buf bytes.Buffer
-	buf.Write(handshakePacket)
-	buf.Write(pv4Packet)
+	buf.Write(h)
+	buf.Write(p)
 	additionalData := make([]byte, 4)
 	buf.Write(additionalData)
 	return buf.Bytes(), nil
+}
+
+func (hc *HandshakeController) name() {
+
 }
 
 // Handshake 实现 HandshakeController 接口，启动针对指定 VPN IP 的握手过程
@@ -279,22 +287,23 @@ func (hc *HandshakeController) handleOutbound(hr HandshakeRequest, lighthouseTri
 }
 
 func (hc *HandshakeController) buildHostHandshakePacket(vip api.VpnIP) ([]byte, error) {
-	// 生成握手消息
-	handshakePacket, err := generateHandshakePacket(hc.localIndexID)
-	if err != nil {
-		hc.logger.Errorf("failed to generate handshake packet: %v", err)
-		return nil, err
+	h, err2 := header.BuildHandshakeAndHostPunch(hc.localIndexID, 0)
+	if err2 != nil {
+		return nil, err2
 	}
 
-	pv4Packet, err := packet.BuildIPv4Packet(hc.localVIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
-	if err != nil {
-		hc.logger.Errorf("failed to build IPv4 packet: %v", err)
-		return nil, err
-	}
+	p := (&packet.Packet{
+		LocalIP:    hc.localVIP,
+		RemoteIP:   vip,
+		LocalPort:  0,
+		RemotePort: 0,
+		Protocol:   packet.ProtoUDP,
+		Fragment:   false,
+	}).Encode()
 
 	var buf bytes.Buffer
-	buf.Write(handshakePacket)
-	buf.Write(pv4Packet)
+	buf.Write(h)
+	buf.Write(p)
 	additionalData := make([]byte, 4)
 	buf.Write(additionalData)
 	return buf.Bytes(), nil
@@ -320,16 +329,6 @@ func (hc *HandshakeController) handleOutboundTimerTick() {
 // deleteHandshakeInfo 删除指定 VPN IP 的握手信息
 func (hc *HandshakeController) deleteHandshakeInfo(vpnIP api.VpnIP) {
 	delete(hc.handshakeHosts, vpnIP)
-}
-
-// generateHandshakePacket 生成握手消息
-func generateHandshakePacket(localIndexID uint32) ([]byte, error) {
-	return header.BuildHandshakePacket(localIndexID, 0, 0)
-}
-
-// generateHandshakeAndHostSyncPacket 生成握手和同步节点消息
-func generateHandshakeAndHostSyncPacket(localIndexID uint32) ([]byte, error) {
-	return header.BuildHandshakePacket(localIndexID, header.HostSync, 0)
 }
 
 // generateIndex 生成一个唯一的本地索引 ID
