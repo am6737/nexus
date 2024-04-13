@@ -171,15 +171,35 @@ func (p *Packet) Encode() []byte {
 	// 144-175 bits: Destination IP Address
 	// 176-207 bits: Options (if any)
 
-	data[0] = 0x45                            // Version 4, IHL 5
+	//data[0] = 0x45                            // Version 4, IHL 5
+	//binary.BigEndian.PutUint16(data[2:4], 20) // Total Length
+	//data[9] = p.Protocol
+	//copy(data[12:16], p.LocalIP.ToIP())
+	//copy(data[16:20], p.RemoteIP.ToIP())
+	//binary.BigEndian.PutUint16(data[0:2], uint16(len(data))) // Total Length
+	//if p.Fragment {
+	//	data[6] |= 0x20 // Set the More Fragments flag
+	//}
+
+	// 创建一个 IPv4 头部
+	ipHeader := make([]byte, 20)
+	// 版本号和头部长度（20 字节）
+	ipHeader[0] = 0x45
 	binary.BigEndian.PutUint16(data[2:4], 20) // Total Length
-	data[9] = p.Protocol
-	copy(data[12:16], p.LocalIP.ToIP())
-	copy(data[16:20], p.RemoteIP.ToIP())
-	binary.BigEndian.PutUint16(data[0:2], uint16(len(data))) // Total Length
+	// TTL 设置为 64
+	ipHeader[8] = 0x40
+	// 协议类型
+	ipHeader[9] = p.Protocol
+	// 源 IP 和目标 IP
+	copy(ipHeader[12:16], p.LocalIP.ToIP())
+	copy(ipHeader[16:20], p.RemoteIP.ToIP())
+
+	// 如果是分片数据包，设置标志位
 	if p.Fragment {
-		data[6] |= 0x20 // Set the More Fragments flag
+		ipHeader[6] |= 0x20 // 设置 DF（Don't Fragment）标志位
 	}
+	checksum := calculateChecksum(ipHeader)
+	binary.BigEndian.PutUint16(ipHeader[10:12], checksum)
 	return data
 }
 
