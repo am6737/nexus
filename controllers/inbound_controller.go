@@ -27,7 +27,7 @@ var _ interfaces.InboundController = &InboundController{}
 type InboundController struct {
 	mtu        int
 	closed     atomic.Bool
-	localVpnIP api.VpnIp
+	localVpnIP api.VpnIP
 	inside     tun.Device
 	logger     *logrus.Logger
 	cfg        *config.Config

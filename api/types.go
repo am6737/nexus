@@ -8,11 +8,11 @@ import (
 	"net/netip"
 )
 
-type VpnIp uint32
+type VpnIP uint32
 
 const maxIPv4StringLen = len("255.255.255.255")
 
-func (ip VpnIp) String() string {
+func (ip VpnIP) String() string {
 	b := make([]byte, maxIPv4StringLen)
 
 	n := ubtoa(b, 0, byte(ip>>24))
@@ -31,32 +31,32 @@ func (ip VpnIp) String() string {
 	return string(b[:n])
 }
 
-func (ip VpnIp) MarshalJSON() ([]byte, error) {
+func (ip VpnIP) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("\"%s\"", ip.String())), nil
 }
 
-func (ip VpnIp) ToIP() net.IP {
+func (ip VpnIP) ToIP() net.IP {
 	nip := make(net.IP, 4)
 	binary.BigEndian.PutUint32(nip, uint32(ip))
 	return nip
 }
 
-func (ip VpnIp) ToNetIpAddr() netip.Addr {
+func (ip VpnIP) ToNetIpAddr() netip.Addr {
 	var nip [4]byte
 	binary.BigEndian.PutUint32(nip[:], uint32(ip))
 	return netip.AddrFrom4(nip)
 }
 
-func (ip VpnIp) ToNetIP() net.IP {
+func (ip VpnIP) ToNetIP() net.IP {
 	ipStr := fmt.Sprintf("%d.%d.%d.%d", byte(ip>>24), byte(ip>>16), byte(ip>>8), byte(ip))
 	return net.ParseIP(ipStr)
 }
 
-func Ip2VpnIp(ip []byte) VpnIp {
+func Ip2VpnIp(ip []byte) VpnIP {
 	if len(ip) == 16 {
-		return VpnIp(binary.BigEndian.Uint32(ip[12:16]))
+		return VpnIP(binary.BigEndian.Uint32(ip[12:16]))
 	}
-	return VpnIp(binary.BigEndian.Uint32(ip))
+	return VpnIP(binary.BigEndian.Uint32(ip))
 }
 
 func ToNetIpAddr(ip net.IP) (netip.Addr, error) {
@@ -67,7 +67,7 @@ func ToNetIpAddr(ip net.IP) (netip.Addr, error) {
 	return addr, nil
 }
 
-func ParseVpnIp(str string) (VpnIp, error) {
+func ParseVpnIp(str string) (VpnIP, error) {
 	ip := net.ParseIP(str)
 	if ip == nil {
 		return 0, fmt.Errorf("invalid IP address: %s", str)
@@ -76,7 +76,7 @@ func ParseVpnIp(str string) (VpnIp, error) {
 	if ipBytes == nil {
 		return 0, fmt.Errorf("invalid IPv4 address: %s", str)
 	}
-	return VpnIp(binary.BigEndian.Uint32(ipBytes)), nil
+	return VpnIP(binary.BigEndian.Uint32(ipBytes)), nil
 }
 
 func ToNetIpPrefix(ipNet net.IPNet) (netip.Prefix, error) {
@@ -110,7 +110,7 @@ func ubtoa(dst []byte, start int, v byte) int {
 	return 3
 }
 
-func (ip *VpnIp) UnmarshalJSON(data []byte) error {
+func (ip *VpnIP) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
 		return err

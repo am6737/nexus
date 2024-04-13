@@ -22,7 +22,7 @@ type CachedPacket struct {
 type packetCallback func(t header.MessageType, st header.MessageSubType, h *HostInfo, p, nb, out []byte)
 
 func NewHostMap(logger *logrus.Logger, vpnCIDR *net.IPNet, preferredRanges []*net.IPNet) *HostMap {
-	h := map[api.VpnIp]*HostInfo{}
+	h := map[api.VpnIP]*HostInfo{}
 	i := map[uint32]*HostInfo{}
 	r := map[uint32]*HostInfo{}
 	relays := map[uint32]*HostInfo{}
@@ -43,7 +43,7 @@ type HostMap struct {
 	Indexes       map[uint32]*HostInfo
 	Relays        map[uint32]*HostInfo // Maps a Relay IDX to a Relay HostInfo object
 	RemoteIndexes map[uint32]*HostInfo
-	hosts         map[api.VpnIp]*HostInfo
+	hosts         map[api.VpnIP]*HostInfo
 	logger        *logrus.Logger
 
 	preferredRanges []*net.IPNet
@@ -59,13 +59,13 @@ func (hm *HostMap) PrintHosts() {
 	}
 }
 
-func (hm *HostMap) DeleteHost(vip api.VpnIp) {
+func (hm *HostMap) DeleteHost(vip api.VpnIP) {
 	hm.Lock()
 	defer hm.Unlock()
 	delete(hm.hosts, vip)
 }
 
-func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *udp.Addr) {
+func (hm *HostMap) UpdateHost(vip api.VpnIP, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
 	if hostInfo, ok := hm.hosts[vip]; ok {
@@ -85,7 +85,7 @@ func (hm *HostMap) UpdateHost(vip api.VpnIp, udpAddr *udp.Addr) {
 	}
 }
 
-func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
+func (hm *HostMap) AddHost(vpnIP api.VpnIP, udpAddr *udp.Addr) {
 	hm.Lock()
 	defer hm.Unlock()
 
@@ -118,12 +118,12 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIp, udpAddr *udp.Addr) {
 	//}
 }
 
-func (hm *HostMap) QueryVpnIp(vpnIp api.VpnIp) *HostInfo {
+func (hm *HostMap) QueryVpnIp(vpnIp api.VpnIP) *HostInfo {
 	//return hm.queryVpnIp(vpnIp, nil)
 	return hm.queryVpnIp(vpnIp)
 }
 
-func (hm *HostMap) queryVpnIp(vpnIp api.VpnIp) *HostInfo {
+func (hm *HostMap) queryVpnIp(vpnIp api.VpnIP) *HostInfo {
 	hm.RLock()
 	if h, ok := hm.hosts[vpnIp]; ok {
 		hm.RUnlock()
@@ -139,10 +139,10 @@ func (hm *HostMap) queryVpnIp(vpnIp api.VpnIp) *HostInfo {
 	return nil
 }
 
-func (hm *HostMap) GetAllHostMap() map[api.VpnIp]*HostInfo {
+func (hm *HostMap) GetAllHostMap() map[api.VpnIP]*HostInfo {
 	hm.RLock()
 	defer hm.RUnlock()
-	hosts := make(map[api.VpnIp]*HostInfo)
+	hosts := make(map[api.VpnIP]*HostInfo)
 	for vpnIP, hostInfo := range hm.hosts {
 		hosts[vpnIP] = hostInfo
 	}
@@ -150,7 +150,7 @@ func (hm *HostMap) GetAllHostMap() map[api.VpnIp]*HostInfo {
 }
 
 // GetRemoteAddrList 返回指定 VPN IP 的主机的远程地址列表
-func (hm *HostMap) GetRemoteAddrList(vpnIP api.VpnIp) []*udp.Addr {
+func (hm *HostMap) GetRemoteAddrList(vpnIP api.VpnIP) []*udp.Addr {
 	hm.RLock()
 	defer hm.RUnlock()
 
@@ -181,7 +181,7 @@ type HostInfo struct {
 	//ConnectionState *ConnectionState
 	RemoteIndexId uint32
 	LocalIndexId  uint32
-	VpnIp         api.VpnIp
+	VpnIp         api.VpnIP
 }
 
 // RemoteList is a unifying concept for lighthouse servers and clients as well as hostinfos.

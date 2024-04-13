@@ -28,8 +28,8 @@ const (
 )
 
 type Interface struct {
-	Hosts   map[api.VpnIp]*host.HostInfo
-	Conns   map[api.VpnIp]udp.Conn
+	Hosts   map[api.VpnIP]*host.HostInfo
+	Conns   map[api.VpnIP]udp.Conn
 	outside udp.Conn
 	inside  tun.Device
 
@@ -44,16 +44,16 @@ type Interface struct {
 
 	closed atomic.Bool
 
-	localVpnIP api.VpnIp
+	localVpnIP api.VpnIP
 }
 
-func (itf *Interface) NewInterface(ctx context.Context, outside udp.Conn, inside tun.Device, routines int, cipher string, logger *logrus.Logger, localVpnIP api.VpnIp) (*Interface, error) {
+func (itf *Interface) NewInterface(ctx context.Context, outside udp.Conn, inside tun.Device, routines int, cipher string, logger *logrus.Logger, localVpnIP api.VpnIP) (*Interface, error) {
 	return &Interface{
 		outside:    outside,
 		inside:     inside,
 		routines:   routines,
-		Hosts:      make(map[api.VpnIp]*host.HostInfo),
-		Conns:      make(map[api.VpnIp]udp.Conn, routines),
+		Hosts:      make(map[api.VpnIP]*host.HostInfo),
+		Conns:      make(map[api.VpnIP]udp.Conn, routines),
 		Writers:    make([]udp.Conn, routines),
 		readers:    make([]io.ReadWriteCloser, routines),
 		cipher:     cipher,
@@ -139,7 +139,7 @@ func parseIP(ipString string) []byte {
 	return []byte(ipBytes)
 }
 
-func replaceAddresses(out []byte, localIP api.VpnIp, remoteIP api.VpnIp) {
+func replaceAddresses(out []byte, localIP api.VpnIP, remoteIP api.VpnIP) {
 	copy(out[12:16], parseIP(localIP.String()))  // 将本地IP地址替换到目标IP地址的位置
 	copy(out[16:20], parseIP(remoteIP.String())) // 将目标IP地址替换到源IP地址的位置
 }

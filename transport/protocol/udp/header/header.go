@@ -30,6 +30,7 @@ const (
 	HostUpdateNotification
 	HostSync
 	HostSyncReply
+	HostPunch
 )
 
 var subtTypeMap = map[MessageSubType]string{

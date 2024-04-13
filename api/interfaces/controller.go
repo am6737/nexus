@@ -24,7 +24,7 @@ type Writer interface {
 
 type OutsideWriter interface {
 	WriteToAddr(p []byte, addr net.Addr) error
-	WriteToVIP(p []byte, addr api.VpnIp) error
+	WriteToVIP(p []byte, addr api.VpnIP) error
 }
 
 type InsideWriter interface {
@@ -36,7 +36,7 @@ type OutboundController interface {
 	Runnable
 	OutsideWriter
 	Listen(internalWriter InsideWriter)
-	//Send(out []byte, vip api.VpnIp) error
+	//Send(out []byte, vip api.VpnIP) error
 	//SendToRemote(out []byte, addr *udp.Addr) error
 	Close() error
 }
@@ -52,16 +52,16 @@ type InboundController interface {
 // HandshakeController 握手控制器接口
 type HandshakeController interface {
 	Runnable
-	Handshake(vpnIp api.VpnIp, packet []byte) error
+	Handshake(vpnIp api.VpnIP, packet []byte) error
 }
 
 // LighthouseController 灯塔控制器接口
 type LighthouseController interface {
 	Runnable
 	// Query 查询指定VPN IP地址的节点信息
-	Query(vpnIP api.VpnIp) (*host.HostInfo, error)
+	Query(vpnIP api.VpnIP) (*host.HostInfo, error)
 	// Store 存储节点信息
 	Store(info *host.HostInfo) error
 
-	HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIp, h *header.Header, p []byte)
+	HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIP, h *header.Header, p []byte)
 }

@@ -40,8 +40,8 @@ var _ interfaces.HandshakeController = &HandshakeController{}
 // HandshakeController 实现 HandshakeController 接口的握手控制器
 type HandshakeController struct {
 	sync.RWMutex
-	localVIP        api.VpnIp
-	handshakeHosts  map[api.VpnIp]*HandshakeHostInfo // 主机信息列表
+	localVIP        api.VpnIP
+	handshakeHosts  map[api.VpnIP]*HandshakeHostInfo // 主机信息列表
 	config          *config.HandshakeConfig          // 握手配置
 	outboundTimer   *time.Timer                      // 发送握手消息的定时器
 	outboundTrigger chan HandshakeRequest            // 触发发送握手消息的通道
@@ -49,26 +49,26 @@ type HandshakeController struct {
 	messageMetrics  *pmetrics.MessageMetrics         // 消息统计
 	outside         udp.Conn                         // 外部连接
 	mainHostMap     *host.HostMap                    // 主机地图
-	lightHouses     map[api.VpnIp]*host.HostInfo
+	lightHouses     map[api.VpnIP]*host.HostInfo
 	metricInitiated metrics.Counter // 握手初始化计数器
 	metricTimedOut  metrics.Counter // 握手超时计数器
 	localIndexID    uint32          // 本地节点标识
 }
 
 type HandshakeRequest struct {
-	VIP    api.VpnIp
+	VIP    api.VpnIP
 	Packet []byte
 }
 
 // NewHandshakeController 创建一个新的 HandshakeController 实例
-func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, outside udp.Conn, config config.HandshakeConfig, localVIP api.VpnIp, lightHouses map[api.VpnIp]*host.HostInfo) *HandshakeController {
+func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, outside udp.Conn, config config.HandshakeConfig, localVIP api.VpnIP, lightHouses map[api.VpnIP]*host.HostInfo) *HandshakeController {
 	index, err := generateIndex()
 	if err != nil {
 		panic(err)
 	}
 	return &HandshakeController{
 		localVIP:        localVIP,
-		handshakeHosts:  make(map[api.VpnIp]*HandshakeHostInfo),
+		handshakeHosts:  make(map[api.VpnIP]*HandshakeHostInfo),
 		config:          ApplyDefaultHandshakeConfig(&config),
 		outboundTimer:   time.NewTimer(config.TryInterval),
 		outboundTrigger: make(chan HandshakeRequest, config.TriggerBuffer),
@@ -169,7 +169,7 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 			hc.logger.Errorf("Error initiating handshake for %s: %v", lightHouse.VpnIp, err)
 		}
 		//hc.logger.
-		//	WithField("lighthouse", lightHouse.VpnIp).
+		//	WithField("lighthouse", lightHouse.VpnIP).
 		//	Info("发送灯塔同步请求")
 		//if err := hc.outside.WriteTo(p, lightHouse.Remote); err != nil {
 		//	hc.logger.WithError(err).Error("Failed to send handshake packet to lighthouse")
@@ -177,7 +177,7 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 	}
 }
 
-func (hc *HandshakeController) buildHandshakeAndHostSyncPacket(vip api.VpnIp) ([]byte, error) {
+func (hc *HandshakeController) buildHandshakeAndHostSyncPacket(vip api.VpnIP) ([]byte, error) {
 	handshakePacket, err := generateHandshakeAndHostSyncPacket(hc.localIndexID)
 	if err != nil {
 		return nil, err
@@ -197,7 +197,7 @@ func (hc *HandshakeController) buildHandshakeAndHostSyncPacket(vip api.VpnIp) ([
 }
 
 // Handshake 实现 HandshakeController 接口，启动针对指定 VPN IP 的握手过程
-func (hc *HandshakeController) Handshake(vip api.VpnIp, packet []byte) error {
+func (hc *HandshakeController) Handshake(vip api.VpnIP, packet []byte) error {
 	hc.Lock()
 	defer hc.Unlock()
 
@@ -217,7 +217,7 @@ func (hc *HandshakeController) Handshake(vip api.VpnIp, packet []byte) error {
 		//	Remotes:       host.RemoteList{},
 		//	RemoteIndexId: 0,
 		//	LocalIndexId:  0,
-		//	VpnIp:         vip,
+		//	VpnIP:         vip,
 		//},
 	}
 
@@ -278,7 +278,7 @@ func (hc *HandshakeController) handleOutbound(hr HandshakeRequest, lighthouseTri
 	handshakeHostInfo.LastRemotes = netRemoteAddrList
 }
 
-func (hc *HandshakeController) buildHostHandshakePacket(vip api.VpnIp) ([]byte, error) {
+func (hc *HandshakeController) buildHostHandshakePacket(vip api.VpnIP) ([]byte, error) {
 	// 生成握手消息
 	handshakePacket, err := generateHandshakePacket(hc.localIndexID)
 	if err != nil {
@@ -318,7 +318,7 @@ func (hc *HandshakeController) handleOutboundTimerTick() {
 }
 
 // deleteHandshakeInfo 删除指定 VPN IP 的握手信息
-func (hc *HandshakeController) deleteHandshakeInfo(vpnIP api.VpnIp) {
+func (hc *HandshakeController) deleteHandshakeInfo(vpnIP api.VpnIP) {
 	delete(hc.handshakeHosts, vpnIP)
 }
 

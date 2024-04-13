@@ -28,8 +28,8 @@ func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow inter
 		logger: logger,
 		host:   host,
 		ow:     ow,
-		//handshakeHosts:       make(map[api.VpnIp]*host.HostInfo),
-		queryQueue:  make(chan api.VpnIp, 1000),
+		//handshakeHosts:       make(map[api.VpnIP]*host.HostInfo),
+		queryQueue:  make(chan api.VpnIP, 1000),
 		queryWorker: &sync.WaitGroup{},
 	}
 }
@@ -37,26 +37,28 @@ func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow inter
 type LighthouseController struct {
 	mu   sync.RWMutex
 	host *host.HostMap
-	//handshakeHosts       map[api.VpnIp]*host.HostInfo
-	queryQueue  chan api.VpnIp
+	//handshakeHosts       map[api.VpnIP]*host.HostInfo
+	queryQueue  chan api.VpnIP
 	queryWorker *sync.WaitGroup
 	logger      *logrus.Logger
 
 	ow interfaces.OutsideWriter
 }
 
-func (lc *LighthouseController) HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIp, h *header.Header, p []byte) {
+func (lc *LighthouseController) HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIP, h *header.Header, p []byte) {
 	switch h.MessageSubtype {
 	case header.HostQuery:
 		lc.handleHostQuery(nil, vpnIp, rAddr)
 	case header.HostQueryReply:
 		lc.handleHostQueryReply(vpnIp, p)
 	case header.HostUpdateNotification:
-		//lc.handleHostUpdateNotification(n, vpnIp)
+	//lc.handleHostUpdateNotification(n, vpnIp)
+	case header.HostPunch:
+		lc.handleHostPunch(rAddr, vpnIp, p)
 	}
 }
 
-func (lc *LighthouseController) handleHostQuery(n interface{}, ip api.VpnIp, addr *udp.Addr) {
+func (lc *LighthouseController) handleHostQuery(n interface{}, ip api.VpnIP, addr *udp.Addr) {
 	host, err := lc.Query(ip)
 	if err != nil {
 		lc.logger.
@@ -85,7 +87,7 @@ func (lc *LighthouseController) handleHostQuery(n interface{}, ip api.VpnIp, add
 	lc.ow.WriteToAddr(buf.Bytes(), host.Remote.NetAddr())
 }
 
-func (lc *LighthouseController) handleHostQueryReply(ip api.VpnIp, p []byte) {
+func (lc *LighthouseController) handleHostQueryReply(ip api.VpnIP, p []byte) {
 	hi := &host.HostInfo{}
 	if err := json.Unmarshal(p, hi); err != nil {
 		lc.logger.WithError(err).Error("LighthouseController handleHostQueryReply")
@@ -128,7 +130,7 @@ func (lc *LighthouseController) startQueryWorker(ctx context.Context) {
 			return
 		case vpnIP := <-lc.queryQueue:
 			lc.queryWorker.Add(1)
-			go func(vpnIP api.VpnIp) {
+			go func(vpnIP api.VpnIP) {
 				defer lc.queryWorker.Done()
 				lc.processQuery(vpnIP)
 			}(vpnIP)
@@ -136,7 +138,7 @@ func (lc *LighthouseController) startQueryWorker(ctx context.Context) {
 	}
 }
 
-func (lc *LighthouseController) Query(vpnIP api.VpnIp) (*host.HostInfo, error) {
+func (lc *LighthouseController) Query(vpnIP api.VpnIP) (*host.HostInfo, error) {
 	host := lc.host.QueryVpnIp(vpnIP)
 	if host != nil {
 		return host, nil
@@ -145,7 +147,7 @@ func (lc *LighthouseController) Query(vpnIP api.VpnIp) (*host.HostInfo, error) {
 	return nil, errors.New("node not found")
 }
 
-func (lc *LighthouseController) processQuery(vpnIP api.VpnIp) {
+func (lc *LighthouseController) processQuery(vpnIP api.VpnIP) {
 	// 发送查询消息到其他节点
 	//queryMsg := NewQueryMessage(vpnIP)
 	//response, err := lc.sendQueryToLighthouses(queryMsg)
@@ -175,7 +177,47 @@ func (lc *LighthouseController) Store(info *host.HostInfo) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	//lc.host.UpdateHost(info.VpnIp, info.Remote)
+	//lc.host.UpdateHost(info.VpnIP, info.Remote)
 	log.Printf("Node stored successfully: %+v\n", info)
 	return nil
+}
+
+func (lc *LighthouseController) handleHostPunch(addr *udp.Addr, vpnIP api.VpnIP, p []byte) {
+	lc.logger.
+		WithField("vpnIp", vpnIP).
+		WithField("addr", addr).
+		Info("打洞请求")
+	empty := []byte{0}
+
+	// 执行单次打洞的函数
+	punch := func(vpnPeer *udp.Addr) {
+		if vpnPeer == nil {
+			return
+		}
+
+		go func() {
+			// 可选：根据需要设置打洞操作的延迟
+			time.Sleep(time.Second)
+
+			// 发送打洞数据包
+			err := lc.ow.WriteToAddr(empty, vpnPeer.NetAddr())
+			if err != nil {
+				lc.logger.WithError(err).Error("Failed to send punch packet")
+			} else {
+				lc.logger.Debugf("Punching on %d for %s", vpnPeer.Port, vpnIP)
+			}
+		}()
+	}
+
+	// 可以根据具体情况获取要进行打洞的地址列表
+	// 这里假设你有一个名为 getPeerAddrs 的函数用于获取对端地址列表
+	//peerAddrs := getPeerAddrs(vpnIp)
+	//
+	//// 遍历地址列表执行打洞操作
+	//for _, peerAddr := range peerAddrs {
+	//	punch(peerAddr)
+	//}
+
+	punch(addr)
+
 }

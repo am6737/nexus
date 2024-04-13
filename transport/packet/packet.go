@@ -36,8 +36,8 @@ func TypeName(t uint8) string {
 }
 
 type Packet struct {
-	LocalIP    api.VpnIp
-	RemoteIP   api.VpnIp
+	LocalIP    api.VpnIP
+	RemoteIP   api.VpnIP
 	LocalPort  uint16
 	RemotePort uint16
 	Protocol   uint8

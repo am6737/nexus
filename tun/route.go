@@ -9,6 +9,6 @@ type Route struct {
 	MTU     int
 	Metric  int
 	Cidr    *net.IPNet
-	Via     *api.VpnIp
+	Via     *api.VpnIP
 	Install bool
 }

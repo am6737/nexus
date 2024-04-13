@@ -25,7 +25,7 @@ type OutboundController struct {
 	outside     udp.Conn
 	hosts       *host.HostMap
 	lighthouses []*host.HostInfo
-	localVpnIP  api.VpnIp
+	localVpnIP  api.VpnIP
 	logger      *logrus.Logger
 	cfg         *config.Config
 	lighthouse  interfaces.LighthouseController
@@ -51,7 +51,7 @@ func (oc *OutboundController) WriteToAddr(p []byte, addr net.Addr) error {
 	})
 }
 
-func (oc *OutboundController) WriteToVIP(p []byte, vip api.VpnIp) error {
+func (oc *OutboundController) WriteToVIP(p []byte, vip api.VpnIP) error {
 	messagePacket, err := header.BuildMessagePacket(9527, 111)
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (oc *OutboundController) SendToRemote(out []byte, addr *udp.Addr) error {
 	return oc.outside.WriteTo(out, addr)
 }
 
-func (oc *OutboundController) Send(out []byte, vip api.VpnIp) error {
+func (oc *OutboundController) Send(out []byte, vip api.VpnIP) error {
 	messagePacket, err := header.BuildMessagePacket(9527, 111)
 	if err != nil {
 		return err
@@ -226,6 +226,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 			WithField("p", p).
 			WithField("远程地址", addr).
 			Info("收到测试消息")
+		oc.hosts.UpdateHost(pk.RemoteIP, addr)
 		testPacket, err := oc.buildTestReplyPacket(pk.RemoteIP)
 		if err != nil {
 			oc.logger.WithError(err).Error("buildTestPacket")
@@ -265,8 +266,7 @@ func (oc *OutboundController) handlePacket(addr *udp.Addr, p []byte, h *header.H
 			}
 		}
 	case header.LightHouse:
-		// 处理目标地址是灯塔的情况
-		//oc.handleLighthouses(addr, pk, h, p)
+		oc.handleLighthouses(addr, pk, h, p)
 	default:
 
 	}
@@ -303,7 +303,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			WithField("pk", pk).
 			WithField("addr", addr).
 			Info("收到灯塔同步回复数据包")
-		var hs map[api.VpnIp]*host.HostInfo
+		var hs map[api.VpnIP]*host.HostInfo
 		if err := json.Unmarshal(p, &hs); err != nil {
 			oc.logger.WithError(err).Error("解析数据包出错")
 			return
@@ -312,26 +312,57 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 			if i == oc.localVpnIP {
 				continue
 			}
-			testPacket, err := oc.buildTestPacket(i)
+			//testPacket, err := oc.buildTestPacket(i)
+			//if err != nil {
+			//	oc.logger.WithError(err).Error("buildTestPacket")
+			//	return
+			//}
+			punchPacket, err := oc.buildHostPunchPacket(i)
 			if err != nil {
-				oc.logger.WithError(err).Error("buildTestPacket")
+				oc.logger.WithError(err).Error("buildHostPunchPacket")
 				return
 			}
 			oc.logger.
 				WithField("remoteIP", i).
 				WithField("addr", i2.Remote).
-				Info("发送测试消息")
-			if err := oc.outside.WriteTo(testPacket, i2.Remote); err != nil {
+				Info("发送打洞消息")
+			if err := oc.outside.WriteTo(punchPacket, i2.Remote); err != nil {
 				oc.logger.WithError(err).Error("数据转发到远程")
 			}
-			oc.hosts.UpdateHost(i, i2.Remote)
+			//oc.hosts.UpdateHost(i, i2.Remote)
 		}
 	default:
 		//oc.hosts.UpdateHost(pk.RemoteIP, addr)
 	}
 }
+func (oc *OutboundController) buildHostPunchPacket(vip api.VpnIP) ([]byte, error) {
+	b := make([]byte, 16)
+	h := header.Header{
+		Version:        header.Version,
+		MessageType:    header.LightHouse,
+		MessageSubtype: header.HostPunch,
+		Reserved:       0,
+		RemoteIndex:    0,
+		MessageCounter: 0,
+	}
+	encode, err := h.Encode(b)
+	if err != nil {
+		return nil, err
+	}
+	pv4Packet, err := packet.BuildIPv4Packet(oc.localVpnIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
+	if err != nil {
+		return nil, err
+	}
 
-func (oc *OutboundController) buildTestReplyPacket(vip api.VpnIp) ([]byte, error) {
+	var buf bytes.Buffer
+	buf.Write(encode)
+	buf.Write(pv4Packet)
+	t := make([]byte, 4)
+	buf.Write(t)
+	return buf.Bytes(), nil
+}
+
+func (oc *OutboundController) buildTestReplyPacket(vip api.VpnIP) ([]byte, error) {
 	handshakePacket := header.BuildTestPacket(header.TestReply, 0, 0)
 	pv4Packet, err := packet.BuildIPv4Packet(oc.localVpnIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
 	if err != nil {
@@ -346,7 +377,7 @@ func (oc *OutboundController) buildTestReplyPacket(vip api.VpnIp) ([]byte, error
 	return buf.Bytes(), nil
 }
 
-func (oc *OutboundController) buildTestPacket(vip api.VpnIp) ([]byte, error) {
+func (oc *OutboundController) buildTestPacket(vip api.VpnIP) ([]byte, error) {
 	handshakePacket := header.BuildTestPacket(header.Test, 0, 0)
 	pv4Packet, err := packet.BuildIPv4Packet(oc.localVpnIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
 	if err != nil {
@@ -361,7 +392,7 @@ func (oc *OutboundController) buildTestPacket(vip api.VpnIp) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIp, data []byte) ([]byte, error) {
+func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIP, data []byte) ([]byte, error) {
 	handshakePacket, err := header.BuildHandshakePacket(0, header.HostSyncReply, 0)
 	if err != nil {
 		return nil, err
@@ -426,7 +457,7 @@ func (oc *OutboundController) Close() error {
 	return oc.outside.Close()
 }
 
-func replaceAddresses(out []byte, localIP api.VpnIp, remoteIP api.VpnIp) {
+func replaceAddresses(out []byte, localIP api.VpnIP, remoteIP api.VpnIP) {
 	copy(out[12:16], parseIP(localIP.String()))  // 将本地IP地址替换到目标IP地址的位置
 	copy(out[16:20], parseIP(remoteIP.String())) // 将目标IP地址替换到源IP地址的位置
 }
