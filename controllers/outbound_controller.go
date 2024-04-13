@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"net"
 	"runtime"
+	"time"
 )
 
 var _ interfaces.OutboundController = &OutboundController{}
@@ -322,19 +323,54 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 				oc.logger.WithError(err).Error("buildHostPunchPacket")
 				return
 			}
-			oc.logger.
-				WithField("remoteIP", i).
-				WithField("addr", i2.Remote).
-				Info("发送打洞消息")
-			if err := oc.outside.WriteTo(punchPacket, i2.Remote); err != nil {
-				oc.logger.WithError(err).Error("数据转发到远程")
-			}
+			oc.handleHostPunch(i2.Remote, i, punchPacket)
+
+			//if err := oc.outside.WriteTo(punchPacket, i2.Remote); err != nil {
+			//	oc.logger.WithError(err).Error("数据转发到远程")
+			//}
 			//oc.hosts.UpdateHost(i, i2.Remote)
 		}
 	default:
 		//oc.hosts.UpdateHost(pk.RemoteIP, addr)
 	}
 }
+
+func (oc *OutboundController) handleHostPunch(addr *udp.Addr, vpnIP api.VpnIP, p []byte) {
+	oc.logger.
+		WithField("vpnIp", vpnIP).
+		WithField("addr", addr).
+		Info("打洞请求")
+	empty := []byte{0}
+
+	punch := func(vpnPeer *udp.Addr) {
+		if vpnPeer == nil {
+			return
+		}
+
+		go func() {
+			// 可选：根据需要设置打洞操作的延迟
+			time.Sleep(time.Second)
+
+			if err := oc.WriteToAddr(empty, vpnPeer.NetAddr()); err != nil {
+				oc.logger.WithError(err).Error("Failed to send punch packet")
+			} else {
+				oc.logger.Debugf("Punching on %d for %s", vpnPeer.Port, vpnIP)
+			}
+		}()
+	}
+
+	// 可以根据具体情况获取要进行打洞的地址列表
+	// 这里假设你有一个名为 getPeerAddrs 的函数用于获取对端地址列表
+	//peerAddrs := getPeerAddrs(vpnIp)
+	//
+	//// 遍历地址列表执行打洞操作
+	//for _, peerAddr := range peerAddrs {
+	//	punch(peerAddr)
+	//}
+
+	punch(addr)
+}
+
 func (oc *OutboundController) buildHostPunchPacket(vip api.VpnIP) ([]byte, error) {
 	b := make([]byte, 16)
 	h := header.Header{

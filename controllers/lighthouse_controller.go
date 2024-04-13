@@ -219,5 +219,4 @@ func (lc *LighthouseController) handleHostPunch(addr *udp.Addr, vpnIP api.VpnIP,
 	//}
 
 	punch(addr)
-
 }
