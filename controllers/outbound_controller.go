@@ -269,6 +269,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 		oc.logger.
 			WithField("remoteIP", pk.RemoteIP).
 			WithField("addr", addr).
+			WithField("pk", pk).
 			Info("发送主机同步回复数据包")
 		if err := oc.outside.WriteTo(replyPacket, addr); err != nil {
 			oc.logger.WithError(err).Error("数据转发到远程")
@@ -277,6 +278,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 		oc.logger.
 			WithField("remoteIP", pk.RemoteIP).
 			WithField("addr", addr).
+			WithField("pk", pk).
 			Info("收到灯塔同步回复请求")
 		p = p[header.Len+20:]
 		var hs map[api.VpnIP]*host.HostInfo

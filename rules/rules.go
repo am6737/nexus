@@ -14,16 +14,33 @@ var (
 	ErrDrop = errors.New("dropped packet due to rule")
 )
 
-func NewRules(outboundRules []config.OutboundRule, inboundRules []config.InboundRule) *Rules {
-	return &Rules{
-		outbound: outboundRules,
-		inbound:  inboundRules,
+func NewRules(outboundRules []config.OutboundRule, inboundRules []config.InboundRule, opts ...RuleOption) *Rules {
+	r := &Rules{
+		outbound:      outboundRules,
+		inbound:       inboundRules,
+		defaultAction: "deny", // 默认设置为拒绝
+	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r
+}
+
+func WithDefaultAction(action string) RuleOption {
+	return func(r *Rules) {
+		r.defaultAction = action
 	}
 }
+
+type RuleOption func(*Rules)
 
 type Rules struct {
 	outbound []config.OutboundRule
 	inbound  []config.InboundRule
+	// Default action when no matching rule is found
+	defaultAction string
 }
 
 func (r *Rules) Outbound(p *packet.Packet) error {
@@ -62,7 +79,10 @@ func (r *Rules) Outbound(p *packet.Packet) error {
 		return nil // Packet should be allowed
 	}
 
-	return nil // No matching outbound rule found
+	if r.defaultAction == "deny" {
+		return ErrDrop
+	}
+	return nil
 }
 
 func (r *Rules) Inbound(p *packet.Packet) error {
@@ -101,5 +121,9 @@ func (r *Rules) Inbound(p *packet.Packet) error {
 		return nil // Packet should be allowed
 	}
 
-	return nil // No matching inbound rule found
+	// 根据 defaultAction 决定是否拒绝或允许
+	if r.defaultAction == "deny" {
+		return ErrDrop
+	}
+	return nil
 }
