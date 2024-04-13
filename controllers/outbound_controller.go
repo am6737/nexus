@@ -388,11 +388,11 @@ func (oc *OutboundController) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 }
 
 func (oc *OutboundController) buildHostPunchReplyPacket(vip api.VpnIP) ([]byte, error) {
-	return oc.buildPacket(vip, header.LightHouse, header.HostPunchReply)
+	return oc.buildPacket(vip, header.Handshake, header.HostPunchReply)
 }
 
 func (oc *OutboundController) buildHostPunchPacket(vip api.VpnIP) ([]byte, error) {
-	return oc.buildPacket(vip, header.LightHouse, header.HostPunch)
+	return oc.buildPacket(vip, header.Handshake, header.HostPunch)
 }
 
 func (oc *OutboundController) buildPacket(vip api.VpnIP, mt header.MessageType, mst header.MessageSubType) ([]byte, error) {
