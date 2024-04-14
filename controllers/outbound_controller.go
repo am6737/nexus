@@ -296,21 +296,21 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 				WithField("remoteIP", i).
 				WithField("addr", i2.Remote).
 				Info("收到的同步地址信息")
-			punchPacket, err := oc.buildTestRequestPacket(i)
-			if err != nil {
-				oc.logger.WithError(err).Error("buildTestPacket")
-				return
-			}
+			//punchPacket, err := oc.buildTestRequestPacket(i)
+			//if err != nil {
+			//	oc.logger.WithError(err).Error("buildTestPacket")
+			//	return
+			//}
 			if oc.lighthouse.IsLighthouse() || oc.IsLighthouse(i) {
 				return
 			}
-			oc.logger.
-				WithField("remoteIP", i).
-				WithField("addr", i2.Remote).
-				Debug("发送测试消息")
-			if err := oc.outside.WriteTo(punchPacket, i2.Remote); err != nil {
-				oc.logger.WithError(err).Error("数据转发到远程")
-			}
+			//oc.logger.
+			//	WithField("remoteIP", i).
+			//	WithField("addr", i2.Remote).
+			//	Debug("发送测试消息")
+			//if err := oc.outside.WriteTo(punchPacket, i2.Remote); err != nil {
+			//	oc.logger.WithError(err).Error("数据转发到远程")
+			//}
 			oc.hosts.UpdateHost(i, i2.Remote)
 		}
 	default:
