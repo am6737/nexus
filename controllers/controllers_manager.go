@@ -115,6 +115,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		config.Lighthouse.Enabled,
 	)
 	outboundController.lighthouse = lighthouseController
+	handshakeController.lighthouse = lighthouseController
 
 	// Initialize controllers manager
 	controllersManager := &ControllersManager{

@@ -52,6 +52,7 @@ type HandshakeController struct {
 	// 外部连接
 	mainHostMap     *host.HostMap // 主机地图
 	lightHouses     map[api.VpnIP]*host.HostInfo
+	lighthouse      interfaces.LighthouseController
 	metricInitiated metrics.Counter // 握手初始化计数器
 	metricTimedOut  metrics.Counter // 握手超时计数器
 	localIndexID    uint32          // 本地节点标识
@@ -193,7 +194,7 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 // handshakeAllHosts 对所有主机进行握手
 func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 	for vip, host := range hc.mainHostMap.GetAllHostMap() {
-		if vip == hc.localVIP || hc.lightHouses[vip] != nil {
+		if vip == hc.localVIP || hc.lightHouses[vip] != nil || hc.lighthouse.IsLighthouse() {
 			continue
 		}
 		handshakePacket, err := hc.buildHandshakeHostReplyPacket(vip)
