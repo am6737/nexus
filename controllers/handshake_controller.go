@@ -241,10 +241,6 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 	}
 }
 
-func (hc *HandshakeController) name() {
-
-}
-
 // Handshake 实现 HandshakeController 接口，启动针对指定 VPN IP 的握手过程
 func (hc *HandshakeController) Handshake(vip api.VpnIP, packet []byte) error {
 	hc.Lock()
