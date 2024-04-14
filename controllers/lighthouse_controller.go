@@ -306,7 +306,7 @@ func (lc *LighthouseController) buildHandshakeHostRequestPacket(vip api.VpnIP) (
 }
 
 func (lc *LighthouseController) buildHandshakeHostSyncReplyPacket(vip api.VpnIP, data []byte) ([]byte, error) {
-	handshakePacket, err := header.BuildHandshake(0, header.HostSyncReply, 0)
+	handshakePacket, err := header.BuildLightHouse(0, header.HostSyncReply, 0)
 	if err != nil {
 		return nil, err
 	}
