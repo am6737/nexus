@@ -53,6 +53,7 @@ type InboundController interface {
 type HandshakeController interface {
 	Runnable
 	Handshake(vpnIp api.VpnIP, packet []byte) error
+	HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIP, h *header.Header, p []byte)
 }
 
 // LighthouseController 灯塔控制器接口

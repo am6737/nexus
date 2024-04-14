@@ -27,12 +27,13 @@ type HandshakeHostInfo struct {
 
 	packet []byte
 
-	StartTime   time.Time            // 开始时间
-	Ready       bool                 // 是否就绪
-	Counter     int                  // 尝试计数器
-	LastRemotes []net.Addr           // 上次发送握手消息的远程地址
-	PacketStore []*host.CachedPacket // 待发送的握手数据包
-	HostInfo    *host.HostInfo       // 主机信息
+	StartTime        time.Time            // 开始时间
+	LastCompleteTime time.Time            // 最后一次握手完成时间
+	Ready            bool                 // 是否就绪
+	Counter          int                  // 尝试计数器
+	LastRemotes      []net.Addr           // 上次发送握手消息的远程地址
+	PacketStore      []*host.CachedPacket // 待发送的握手数据包
+	HostInfo         *host.HostInfo       // 主机信息
 }
 
 var _ interfaces.HandshakeController = &HandshakeController{}
@@ -47,8 +48,9 @@ type HandshakeController struct {
 	outboundTrigger chan HandshakeRequest            // 触发发送握手消息的通道
 	logger          *logrus.Logger                   // 日志记录器
 	messageMetrics  *pmetrics.MessageMetrics         // 消息统计
-	outside         udp.Conn                         // 外部连接
-	mainHostMap     *host.HostMap                    // 主机地图
+	ow              interfaces.OutsideWriter
+	// 外部连接
+	mainHostMap     *host.HostMap // 主机地图
 	lightHouses     map[api.VpnIP]*host.HostInfo
 	metricInitiated metrics.Counter // 握手初始化计数器
 	metricTimedOut  metrics.Counter // 握手超时计数器
@@ -61,7 +63,7 @@ type HandshakeRequest struct {
 }
 
 // NewHandshakeController 创建一个新的 HandshakeController 实例
-func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, outside udp.Conn, config config.HandshakeConfig, localVIP api.VpnIP, lightHouses map[api.VpnIP]*host.HostInfo) *HandshakeController {
+func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, ow interfaces.OutsideWriter, config config.HandshakeConfig, localVIP api.VpnIP, lightHouses map[api.VpnIP]*host.HostInfo) *HandshakeController {
 	index, err := generateIndex()
 	if err != nil {
 		panic(err)
@@ -77,8 +79,65 @@ func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, li
 		logger:          logger,
 		mainHostMap:     mainHostMap,
 		lightHouses:     lightHouses,
-		outside:         outside,
+		ow:              ow,
 		localIndexID:    index,
+	}
+}
+
+func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIP, h *header.Header, p []byte) {
+	hc.logger.
+		WithField("vpnIP", vpnIp).
+		WithField("addr", rAddr).
+		WithField("type", h.MessageType).
+		WithField("subtype", h.MessageSubtype).
+		Info("HandshakeController.HandleRequest")
+	switch h.MessageSubtype {
+	case header.HostHandshakeRequest:
+		hc.handleHostHandshakeRequest(rAddr, vpnIp)
+	case header.HostHandshakeReply:
+		hc.handleHostHandshakeReply(rAddr, vpnIp)
+	}
+}
+
+func (hc *HandshakeController) handleHostHandshakeRequest(addr *udp.Addr, vip api.VpnIP) {
+	replyPacket, err := hc.buildHandshakeHostReplyPacket(vip)
+	if err != nil {
+		hc.logger.WithError(err).Error("Failed to build handshake host reply packet")
+		return
+	}
+
+	// 执行单次打洞的函数
+	punch := func(vpnPeer *udp.Addr) {
+		if vpnPeer == nil {
+			return
+		}
+		go func() {
+			// 可选：根据需要设置打洞操作的延迟
+			time.Sleep(time.Second)
+
+			// 发送打洞数据包
+			err := hc.ow.WriteToAddr(replyPacket, vpnPeer.NetAddr())
+			if err != nil {
+				hc.logger.WithError(err).Error("Failed to send punch packet")
+			} else {
+				hc.logger.Debugf("Punching on %d for %s", vpnPeer.Port, vip)
+			}
+		}()
+	}
+
+	punch(addr)
+}
+
+func (hc *HandshakeController) handleHostHandshakeReply(addr *udp.Addr, vip api.VpnIP) {
+	hc.Lock()
+	defer hc.Unlock()
+	if host, exists := hc.handshakeHosts[vip]; exists {
+		host.Lock()
+		defer host.Unlock()
+		host.HostInfo.VpnIp = vip
+		host.HostInfo.Remote = addr
+		host.LastRemotes = append(host.LastRemotes, addr)
+		host.Ready = true
 	}
 }
 
@@ -103,7 +162,7 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 	hc.syncLighthouse(ctx)
 
 	go func() {
-		handshakeHostTicker := time.NewTicker(hc.config.HandshakeHost)
+		handshakeHostTicker := time.NewTicker(5 * time.Second)
 		defer handshakeHostTicker.Stop()
 		for {
 			select {
@@ -134,10 +193,15 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 // handshakeAllHosts 对所有主机进行握手
 func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 	for vip, host := range hc.mainHostMap.GetAllHostMap() {
-		handshakePacket, err := hc.buildHostHandshakePacket(vip)
+		if vip == hc.localVIP || hc.lightHouses[vip] != nil {
+			continue
+		}
+		handshakePacket, err := hc.buildHandshakeHostReplyPacket(vip)
 		if err != nil {
+			hc.logger.WithError(err).Error("Failed to build handshake host reply packet")
 			return
 		}
+
 		hc.logger.
 			WithField("vpnIP", vip).
 			WithField("addr", host.Remote).
@@ -171,33 +235,10 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 		//hc.logger.
 		//	WithField("lighthouse", lightHouse.VpnIP).
 		//	Info("发送灯塔同步请求")
-		//if err := hc.outside.WriteTo(p, lightHouse.Remote); err != nil {
+		//if err := hc.ow.WriteTo(p, lightHouse.Remote); err != nil {
 		//	hc.logger.WithError(err).Error("Failed to send handshake packet to lighthouse")
 		//}
 	}
-}
-
-func (hc *HandshakeController) buildHandshakeAndHostSyncPacket(vip api.VpnIP) ([]byte, error) {
-	h, err2 := header.BuildHandshakeAndHostSync(hc.localIndexID, 0)
-	if err2 != nil {
-		return nil, err2
-	}
-
-	p := (&packet.Packet{
-		LocalIP:    hc.localVIP,
-		RemoteIP:   vip,
-		LocalPort:  0,
-		RemotePort: 0,
-		Protocol:   packet.ProtoUDP,
-		Fragment:   false,
-	}).Encode()
-
-	var buf bytes.Buffer
-	buf.Write(h)
-	buf.Write(p)
-	additionalData := make([]byte, 4)
-	buf.Write(additionalData)
-	return buf.Bytes(), nil
 }
 
 func (hc *HandshakeController) name() {
@@ -209,24 +250,32 @@ func (hc *HandshakeController) Handshake(vip api.VpnIP, packet []byte) error {
 	hc.Lock()
 	defer hc.Unlock()
 
-	// 检查是否已经存在相同 VPN IP 的握手信息
-	//h, exists := hc.handshakeHosts[vip]
-	//if exists {
-	//	h.packet = packet
-	//	return nil
-	//}
+	hh, ok := hc.handshakeHosts[vip]
+	if !ok {
+		// 创建新的握手主机信息
+		hh = &HandshakeHostInfo{
+			StartTime: time.Now(),
+			packet:    packet,
+			HostInfo: &host.HostInfo{
+				VpnIp: vip,
+			},
+		}
+		hc.handshakeHosts[vip] = hh
+	} else {
+		hh.Lock()
+		defer hh.Unlock()
 
-	//创建新的握手主机信息
-	hc.handshakeHosts[vip] = &HandshakeHostInfo{
-		packet:    packet,
-		StartTime: time.Now(),
-		//HostInfo: &host.HostInfo{
-		//	Remote:        nil,
-		//	Remotes:       host.RemoteList{},
-		//	RemoteIndexId: 0,
-		//	LocalIndexId:  0,
-		//	VpnIP:         vip,
-		//},
+		if hh.Ready && time.Since(hh.LastCompleteTime) < hc.config.HandshakeHost {
+			return nil
+		}
+
+		hh.packet = packet
+		hh.StartTime = time.Now()
+		hh.LastCompleteTime = time.Time{}
+		hh.Ready = false
+		hh.Counter = 0
+		hh.LastRemotes = nil
+		hh.PacketStore = nil
 	}
 
 	// 触发发送握手消息
@@ -270,7 +319,7 @@ func (hc *HandshakeController) handleOutbound(hr HandshakeRequest, lighthouseTri
 	// 发送握手消息到远程地址列表中的每个地址
 	for _, remoteAddr := range remoteAddrList {
 		//fmt.Println("handshakePacket => ", hr.Packet)
-		if err := hc.outside.WriteTo(hr.Packet, remoteAddr); err != nil {
+		if err := hc.ow.WriteToAddr(hr.Packet, remoteAddr); err != nil {
 			hc.logger.Errorf("failed to send handshake packet to %s: %v", remoteAddr, err)
 			continue
 		}
@@ -400,4 +449,34 @@ func ApplyDefaultHandshakeConfig(config *config.HandshakeConfig) *config.Handsha
 	}
 
 	return config
+}
+
+func (hc *HandshakeController) buildHandshakeHostRequestPacket(vip api.VpnIP) ([]byte, error) {
+	return hc.buildHandshakePacket(vip, header.HostHandshakeRequest)
+}
+
+func (hc *HandshakeController) buildHandshakeHostReplyPacket(vip api.VpnIP) ([]byte, error) {
+	return hc.buildHandshakePacket(vip, header.HostHandshakeReply)
+}
+
+func (hc *HandshakeController) buildHandshakeAndHostSyncPacket(vip api.VpnIP) ([]byte, error) {
+	return hc.buildHandshakePacket(vip, header.HostSync)
+}
+
+func (hc *HandshakeController) buildHandshakePacket(vip api.VpnIP, ms header.MessageSubType) ([]byte, error) {
+	h, err := header.BuildHandshake(hc.localIndexID, ms, 0)
+	if err != nil {
+		return nil, err
+	}
+	pk, err := packet.BuildIPv4Packet(hc.localVIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	buf.Write(h)
+	buf.Write(pk)
+	tmp := make([]byte, 4)
+	buf.Write(tmp)
+	return buf.Bytes(), nil
 }

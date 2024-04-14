@@ -100,7 +100,7 @@ func (oc *OutboundController) Start(ctx context.Context) error {
 	//	return err
 	//}
 	//udpServer.ReloadConfig(oc.cfg)
-	//oc.outside = udpServer
+	//oc.ow = udpServer
 
 	// 如果端口是动态的，则获取端口
 	if oc.cfg.Listen.Port == 0 {
@@ -384,7 +384,7 @@ func (oc *OutboundController) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 	//			Info("出站流量转发到灯塔")
 	//
 	//		// 如果本地没有远程连接，将数据包转发到灯塔
-	//		if err := oc.outside.WriteTo(p, lighthouse.Remote); err != nil {
+	//		if err := oc.ow.WriteTo(p, lighthouse.Remote); err != nil {
 	//			oc.logger.WithError(err).Error("数据转发到灯塔出错")
 	//		}
 	//	}

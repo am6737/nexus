@@ -102,7 +102,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		logger.WithField("controller", "Handshake").Logger,
 		hosts,
 		&struct{}{},
-		udpServer,
+		outboundController,
 		config.Handshake,
 		localVpnIP,
 		lighthouses,

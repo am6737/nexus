@@ -36,6 +36,8 @@ const (
 	HostSyncReply
 	HostPunch
 	HostPunchReply
+	HostHandshakeRequest
+	HostHandshakeReply
 )
 
 var subtTypeMap = map[MessageSubType]string{
@@ -44,6 +46,10 @@ var subtTypeMap = map[MessageSubType]string{
 	HostUpdateNotification: "hostUpdateNotification",
 	HostSync:               "hostSync",
 	HostSyncReply:          "hostSyncReply",
+	HostPunch:              "hostPunch",
+	HostPunchReply:         "hostPunchReply",
+	HostHandshakeRequest:   "hostHandshakeRequest",
+	HostHandshakeReply:     "hostHandshakeReply",
 }
 
 var typeMap = map[MessageType]string{
@@ -85,6 +91,10 @@ func BuildHandshakeAndHostSync(remoteIndex uint32, messageCounter uint64) ([]byt
 
 func BuildHandshakeAndHostPunch(remoteIndex uint32, messageCounter uint64) ([]byte, error) {
 	return buildPacket(Handshake, HostPunch, remoteIndex, messageCounter), nil
+}
+
+func BuildHandshakeAndHostReply(remoteIndex uint32, messageCounter uint64) []byte {
+	return buildPacket(Handshake, HostHandshakeReply, remoteIndex, messageCounter)
 }
 
 func buildPacket(mt MessageType, mst MessageSubType, remoteIndex uint32, messageCounter uint64) []byte {

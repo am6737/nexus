@@ -10,6 +10,10 @@ type Addr struct {
 	Port uint16
 }
 
+func (a Addr) Network() string {
+	return "udp"
+}
+
 func (a Addr) String() string {
 	return fmt.Sprintf("%s:%d", a.IP.String(), a.Port)
 }
