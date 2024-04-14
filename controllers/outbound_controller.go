@@ -39,13 +39,15 @@ func (oc *OutboundController) WriteToAddr(p []byte, addr net.Addr) error {
 			return a.IP.To4(), uint16(a.Port)
 		case *net.UDPAddr:
 			return a.IP.To4(), uint16(a.Port)
+		case *udp.Addr:
+			return a.IP, a.Port
 		default:
 			// 处理未知类型的 net.Addr
 			return nil, 0
 		}
 	}
 	ip, port := parseIPAndPort(addr)
-	oc.logger.WithField("addr", addr).Info("出站流量 SendToRemote")
+	//oc.logger.WithField("addr", addr).Info("出站流量")
 	return oc.outside.WriteTo(p, &udp.Addr{
 		IP:   ip,
 		Port: port,
