@@ -85,6 +85,10 @@ func BuildHandshake(remoteIndex uint32, ms MessageSubType, messageCounter uint64
 	return buildPacket(Handshake, ms, remoteIndex, messageCounter), nil
 }
 
+func BuildLightHouse(remoteIndex uint32, ms MessageSubType, messageCounter uint64) ([]byte, error) {
+	return buildPacket(LightHouse, ms, remoteIndex, messageCounter), nil
+}
+
 func BuildHandshakeAndHostSync(remoteIndex uint32, messageCounter uint64) ([]byte, error) {
 	return buildPacket(Handshake, HostSync, remoteIndex, messageCounter), nil
 }

@@ -219,7 +219,7 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 			hc.logger.Warn("Lighthouse is localhost")
 			continue
 		}
-		p, err := hc.buildHandshakeAndHostSyncPacket(lightHouse.VpnIp)
+		p, err := hc.buildLightHouseAndHostSyncPacket(lightHouse.VpnIp)
 		if err != nil {
 			hc.logger.WithError(err).Error("Failed to build handshake and host sync packet")
 			continue
@@ -461,8 +461,22 @@ func (hc *HandshakeController) buildHandshakeHostReplyPacket(vip api.VpnIP) ([]b
 	return hc.buildHandshakePacket(vip, header.HostHandshakeReply)
 }
 
-func (hc *HandshakeController) buildHandshakeAndHostSyncPacket(vip api.VpnIP) ([]byte, error) {
-	return hc.buildHandshakePacket(vip, header.HostSync)
+func (hc *HandshakeController) buildLightHouseAndHostSyncPacket(vip api.VpnIP) ([]byte, error) {
+	h, err := header.BuildLightHouse(hc.localIndexID, header.HostSync, 0)
+	if err != nil {
+		return nil, err
+	}
+	pk, err := packet.BuildIPv4Packet(hc.localVIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	buf.Write(h)
+	buf.Write(pk)
+	tmp := make([]byte, 4)
+	buf.Write(tmp)
+	return buf.Bytes(), nil
 }
 
 func (hc *HandshakeController) buildHandshakePacket(vip api.VpnIP, ms header.MessageSubType) ([]byte, error) {
