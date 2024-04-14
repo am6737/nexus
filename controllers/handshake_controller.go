@@ -85,18 +85,18 @@ func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, li
 	}
 }
 
-func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIP, h *header.Header, p []byte) {
+func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
 	hc.logger.
-		WithField("vpnIP", vpnIp).
+		WithField("vpnIP", pk.RemoteIP).
 		WithField("addr", rAddr).
 		WithField("type", h.MessageType).
 		WithField("subtype", h.MessageSubtype).
 		Info("HandshakeController.HandleRequest")
 	switch h.MessageSubtype {
 	case header.HostHandshakeRequest:
-		hc.handleHostHandshakeRequest(rAddr, vpnIp)
+		hc.handleHostHandshakeRequest(rAddr, pk.RemoteIP)
 	case header.HostHandshakeReply:
-		hc.handleHostHandshakeReply(rAddr, vpnIp)
+		hc.handleHostHandshakeReply(rAddr, pk.RemoteIP)
 	}
 }
 
@@ -117,8 +117,7 @@ func (hc *HandshakeController) handleHostHandshakeRequest(addr *udp.Addr, vip ap
 			time.Sleep(time.Second)
 
 			// 发送打洞数据包
-			err := hc.ow.WriteToAddr(replyPacket, vpnPeer.NetAddr())
-			if err != nil {
+			if err := hc.ow.WriteToAddr(replyPacket, vpnPeer.NetAddr()); err != nil {
 				hc.logger.WithError(err).Error("Failed to send punch packet")
 			} else {
 				hc.logger.Debugf("Punching on %d for %s", vpnPeer.Port, vip)

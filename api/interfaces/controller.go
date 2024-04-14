@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/host"
+	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/transport/protocol/udp/header"
 	"io"
@@ -53,7 +54,7 @@ type InboundController interface {
 type HandshakeController interface {
 	Runnable
 	Handshake(vpnIp api.VpnIP, packet []byte) error
-	HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIP, h *header.Header, p []byte)
+	HandleRequest(rAddr *udp.Addr, packet *packet.Packet, h *header.Header, p []byte)
 }
 
 // LighthouseController 灯塔控制器接口
@@ -64,7 +65,7 @@ type LighthouseController interface {
 	// Store 存储节点信息
 	Store(info *host.HostInfo) error
 
-	HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIP, h *header.Header, p []byte)
+	HandleRequest(rAddr *udp.Addr, packet *packet.Packet, h *header.Header, p []byte)
 
 	// IsLighthouse 判断当前节点是否是灯塔节点
 	IsLighthouse() bool

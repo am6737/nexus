@@ -8,6 +8,7 @@ import (
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/host"
+	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/transport/protocol/udp/header"
 	"github.com/sirupsen/logrus"
@@ -23,12 +24,13 @@ var (
 
 var _ interfaces.LighthouseController = &LighthouseController{}
 
-func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow interfaces.OutsideWriter, isLighthouse bool) *LighthouseController {
+func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow interfaces.OutsideWriter, isLighthouse bool, localVpnIP api.VpnIP) *LighthouseController {
 	return &LighthouseController{
 		logger:       logger,
 		host:         host,
 		ow:           ow,
 		isLighthouse: isLighthouse,
+		localVpnIP:   localVpnIP,
 		//handshakeHosts:       make(map[api.VpnIP]*host.HostInfo),
 		queryQueue:  make(chan api.VpnIP, 1000),
 		queryWorker: &sync.WaitGroup{},
@@ -42,6 +44,7 @@ type LighthouseController struct {
 	queryQueue  chan api.VpnIP
 	queryWorker *sync.WaitGroup
 	logger      *logrus.Logger
+	localVpnIP  api.VpnIP
 
 	ow interfaces.OutsideWriter
 
@@ -52,16 +55,20 @@ func (lc *LighthouseController) IsLighthouse() bool {
 	return lc.isLighthouse
 }
 
-func (lc *LighthouseController) HandleRequest(rAddr *udp.Addr, vpnIp api.VpnIP, h *header.Header, p []byte) {
+func (lc *LighthouseController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
 	switch h.MessageSubtype {
+	case header.HostSync:
+		lc.handleHostSync(rAddr, pk)
+	case header.HostSyncReply:
+		lc.handleHostSyncReply(rAddr, pk, p)
 	case header.HostQuery:
-		lc.handleHostQuery(nil, vpnIp, rAddr)
+		lc.handleHostQuery(nil, pk.RemoteIP, rAddr)
 	case header.HostQueryReply:
-		lc.handleHostQueryReply(vpnIp, p)
+		lc.handleHostQueryReply(pk.RemoteIP, p)
 	case header.HostUpdateNotification:
 	//lc.handleHostUpdateNotification(n, vpnIp)
 	case header.HostPunch:
-		lc.handleHostPunch(rAddr, vpnIp, p)
+		lc.handleHostPunch(rAddr, pk.RemoteIP, p)
 	}
 }
 
@@ -226,4 +233,112 @@ func (lc *LighthouseController) handleHostPunch(addr *udp.Addr, vpnIP api.VpnIP,
 	//}
 
 	punch(addr)
+}
+
+func (lc *LighthouseController) handleHostSync(addr *udp.Addr, pk *packet.Packet) {
+	lc.logger.
+		WithField("remoteIP", pk.RemoteIP).
+		WithField("addr", addr).
+		Info("收到主机同步请求")
+	lc.host.UpdateHost(pk.RemoteIP, addr)
+	if len(lc.host.GetAllHostMap()) <= 0 {
+		return
+	}
+	hp, _ := json.Marshal(lc.host.GetAllHostMap())
+	replyPacket, err := lc.buildHandshakeHostSyncReplyPacket(pk.RemoteIP, hp)
+	if err != nil {
+		lc.logger.WithError(err).Error("构建握手数据包出错")
+		return
+	}
+	lc.logger.
+		WithField("remoteIP", pk.RemoteIP).
+		WithField("addr", addr).
+		WithField("pk", pk).
+		Info("发送主机同步回复数据包")
+	if err := lc.ow.WriteToAddr(replyPacket, addr); err != nil {
+		lc.logger.WithError(err).Error("数据转发到远程")
+	}
+}
+
+func (lc *LighthouseController) handleHostSyncReply(addr *udp.Addr, pk *packet.Packet, p []byte) {
+	if lc.IsLighthouse() {
+		return
+	}
+
+	lc.logger.
+		WithField("remoteIP", pk.RemoteIP).
+		WithField("addr", addr).
+		WithField("pk", pk).
+		Info("收到灯塔同步回复请求")
+	p = p[header.Len+20:]
+	var hs map[api.VpnIP]*host.HostInfo
+	if err := json.Unmarshal(p, &hs); err != nil {
+		lc.logger.WithError(err).Error("解析数据包出错")
+		return
+	}
+
+	for i, i2 := range hs {
+		if i == lc.localVpnIP {
+			continue
+		}
+		lc.logger.
+			WithField("remoteIP", i).
+			WithField("addr", i2.Remote).
+			Info("收到的同步地址信息")
+		punchPacket, err := lc.buildHandshakeHostRequestPacket(i)
+		if err != nil {
+			lc.logger.WithError(err).Error("buildTestPacket")
+			return
+		}
+		lc.logger.
+			WithField("remoteIP", i).
+			WithField("addr", i2.Remote).
+			Debug("发送握手消息")
+		if err := lc.ow.WriteToAddr(punchPacket, i2.Remote); err != nil {
+			lc.logger.WithError(err).Error("数据转发到远程")
+		}
+		lc.host.UpdateHost(i, i2.Remote)
+	}
+}
+
+func (lc *LighthouseController) buildHandshakeHostRequestPacket(vip api.VpnIP) ([]byte, error) {
+	return lc.buildHandshakePacket(vip, header.HostHandshakeRequest)
+}
+
+func (lc *LighthouseController) buildHandshakeHostSyncReplyPacket(vip api.VpnIP, data []byte) ([]byte, error) {
+	handshakePacket, err := header.BuildHandshake(0, header.HostSyncReply, 0)
+	if err != nil {
+		return nil, err
+	}
+	pv4Packet, err := packet.BuildIPv4Packet(lc.localVpnIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	buf.Write(handshakePacket)
+	buf.Write(pv4Packet)
+	//if len(data) < 4 {
+	//	data = make([]byte, 4)
+	//}
+	buf.Write(data)
+	return buf.Bytes(), nil
+}
+
+func (lc *LighthouseController) buildHandshakePacket(vip api.VpnIP, ms header.MessageSubType) ([]byte, error) {
+	h, err := header.BuildHandshake(0, ms, 0)
+	if err != nil {
+		return nil, err
+	}
+	pk, err := packet.BuildIPv4Packet(lc.localVpnIP.ToIP(), vip.ToIP(), packet.ProtoUDP, false)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	buf.Write(h)
+	buf.Write(pk)
+	tmp := make([]byte, 4)
+	buf.Write(tmp)
+	return buf.Bytes(), nil
 }

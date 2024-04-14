@@ -3,7 +3,6 @@ package controllers
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
@@ -29,6 +28,7 @@ type OutboundController struct {
 	logger      *logrus.Logger
 	cfg         *config.Config
 	lighthouse  interfaces.LighthouseController
+	handshake   interfaces.HandshakeController
 	rules       interfaces.RulesEngine
 }
 
@@ -252,70 +252,7 @@ func (oc *OutboundController) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 		return
 	}
 
-	switch h.MessageSubtype {
-	case header.HostSync:
-		oc.logger.
-			WithField("remoteIP", pk.RemoteIP).
-			WithField("addr", addr).
-			Info("收到主机同步请求")
-		oc.hosts.UpdateHost(pk.RemoteIP, addr)
-		if len(oc.hosts.GetAllHostMap()) <= 0 {
-			return
-		}
-		hp, _ := json.Marshal(oc.hosts.GetAllHostMap())
-		replyPacket, err := oc.buildHandshakeHostSyncReplyPacket(pk.RemoteIP, hp)
-		if err != nil {
-			oc.logger.WithError(err).Error("构建握手数据包出错")
-			return
-		}
-		oc.logger.
-			WithField("remoteIP", pk.RemoteIP).
-			WithField("addr", addr).
-			WithField("pk", pk).
-			Info("发送主机同步回复数据包")
-		if err := oc.outside.WriteTo(replyPacket, addr); err != nil {
-			oc.logger.WithError(err).Error("数据转发到远程")
-		}
-	case header.HostSyncReply:
-		oc.logger.
-			WithField("remoteIP", pk.RemoteIP).
-			WithField("addr", addr).
-			WithField("pk", pk).
-			Info("收到灯塔同步回复请求")
-		p = p[header.Len+20:]
-		var hs map[api.VpnIP]*host.HostInfo
-		if err := json.Unmarshal(p, &hs); err != nil {
-			oc.logger.WithError(err).Error("解析数据包出错")
-			return
-		}
-		for i, i2 := range hs {
-			if i == oc.localVpnIP {
-				continue
-			}
-			oc.logger.
-				WithField("remoteIP", i).
-				WithField("addr", i2.Remote).
-				Info("收到的同步地址信息")
-			//punchPacket, err := oc.buildTestRequestPacket(i)
-			//if err != nil {
-			//	oc.logger.WithError(err).Error("buildTestPacket")
-			//	return
-			//}
-			if oc.lighthouse.IsLighthouse() || oc.IsLighthouse(i) {
-				return
-			}
-			//oc.logger.
-			//	WithField("remoteIP", i).
-			//	WithField("addr", i2.Remote).
-			//	Debug("发送测试消息")
-			//if err := oc.outside.WriteTo(punchPacket, i2.Remote); err != nil {
-			//	oc.logger.WithError(err).Error("数据转发到远程")
-			//}
-			oc.hosts.UpdateHost(i, i2.Remote)
-		}
-	default:
-		//oc.hosts.UpdateHost(pk.RemoteIP, addr)
-	}
+	oc.handshake.HandleRequest(addr, pk, h, p)
 }
 
 func (oc *OutboundController) buildHandshakeHostSyncReplyPacket(vip api.VpnIP, data []byte) ([]byte, error) {
@@ -378,19 +315,7 @@ func (oc *OutboundController) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 		return
 	}
 
-	oc.lighthouse.HandleRequest(addr, pk.LocalIP, h, p)
-	//for _, lighthouse := range oc.lighthouses {
-	//	if lighthouse != nil {
-	//		oc.logger.WithField("目标地址", addr).
-	//			WithField("灯塔地址", lighthouse.Remote).
-	//			Info("出站流量转发到灯塔")
-	//
-	//		// 如果本地没有远程连接，将数据包转发到灯塔
-	//		if err := oc.ow.WriteTo(p, lighthouse.Remote); err != nil {
-	//			oc.logger.WithError(err).Error("数据转发到灯塔出错")
-	//		}
-	//	}
-	//}
+	oc.lighthouse.HandleRequest(addr, pk, h, p)
 }
 
 func (oc *OutboundController) handleTest(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {

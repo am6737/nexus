@@ -113,6 +113,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		hosts,
 		outboundController,
 		config.Lighthouse.Enabled,
+		localVpnIP,
 	)
 	outboundController.lighthouse = lighthouseController
 	handshakeController.lighthouse = lighthouseController
