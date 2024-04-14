@@ -137,6 +137,7 @@ func (hc *HandshakeController) handleHostHandshakeReply(addr *udp.Addr, vip api.
 		host.HostInfo.VpnIp = vip
 		host.HostInfo.Remote = addr
 		host.LastRemotes = append(host.LastRemotes, addr)
+		host.LastCompleteTime = time.Now()
 		host.Ready = true
 	}
 }
