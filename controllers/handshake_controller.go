@@ -197,7 +197,7 @@ func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 		if vip == hc.localVIP || hc.lightHouses[vip] != nil || hc.lighthouse.IsLighthouse() {
 			continue
 		}
-		handshakePacket, err := hc.buildHandshakeHostReplyPacket(vip)
+		handshakePacket, err := hc.buildHandshakeHostRequestPacket(vip)
 		if err != nil {
 			hc.logger.WithError(err).Error("Failed to build handshake host reply packet")
 			return
@@ -316,6 +316,12 @@ func (hc *HandshakeController) handleOutbound(hr HandshakeRequest, lighthouseTri
 	// 发送握手消息到远程地址列表中的每个地址
 	for _, remoteAddr := range remoteAddrList {
 		//fmt.Println("handshakePacket => ", hr.Packet)
+
+		hc.logger.
+			WithField("vpnIP", hr.VIP).
+			WithField("addr", remoteAddr).
+			WithField("localIndex", hc.localIndexID).
+			Info("send handshake packet")
 		if err := hc.ow.WriteToAddr(hr.Packet, remoteAddr); err != nil {
 			hc.logger.Errorf("failed to send handshake packet to %s: %v", remoteAddr, err)
 			continue
