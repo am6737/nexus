@@ -134,6 +134,21 @@ func Encode(b []byte, v uint8, mt MessageType, mst MessageSubType, ri uint32, mc
 	return b
 }
 
+func Decode(b []byte) (Header, error) {
+	if len(b) < Len {
+		return Header{}, fmt.Errorf("byte array must be at least HeaderLen bytes long")
+	}
+
+	return Header{
+		Version:        b[0] >> 4,
+		MessageType:    MessageType(b[0] & 0x0f),
+		MessageSubtype: MessageSubType(b[1]),
+		Reserved:       binary.BigEndian.Uint16(b[2:4]),
+		RemoteIndex:    binary.BigEndian.Uint32(b[4:8]),
+		MessageCounter: binary.BigEndian.Uint64(b[8:16]),
+	}, nil
+}
+
 func (h *Header) Decode(b []byte) error {
 	if len(b) < Len {
 		return fmt.Errorf("byte array must be at least HeaderLen bytes long")

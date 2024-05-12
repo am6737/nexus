@@ -262,6 +262,13 @@ func (hc *HandshakeController) Handshake(vip api.VpnIP, packet []byte) error {
 		hh.Lock()
 		defer hh.Unlock()
 
+		hc.logger.
+			WithField("vpnIP", vip).
+			WithField("addr", hh.HostInfo.Remote).
+			WithField("Ready", hh.Ready).
+			WithField("LastCompleteTime", hh.LastCompleteTime).
+			Debugf("Handshake for %s already complete, skipping", vip)
+
 		if hh.Ready && time.Since(hh.LastCompleteTime) < hc.config.HandshakeHost {
 			return nil
 		}

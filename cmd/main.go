@@ -42,8 +42,7 @@ func main() {
 	defer tunDevice.Close()
 
 	ctx := context.Background()
-
-	ctrl := controllers.NewControllersManager(cfg, logger, tunDevice)
+	ctrl := controllers.NewControllersManager(ctx, cfg, logger, tunDevice)
 	if err := ctrl.Start(ctx); err != nil {
 		panic(err)
 	}

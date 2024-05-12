@@ -4,9 +4,89 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/am6737/nexus/config"
 	"net"
 	"net/netip"
 )
+
+const (
+	NetWorkNamePrefix = "network_"
+)
+
+type CreateNetwork struct {
+	Name string `json:"name"`
+	Cidr string `json:"cidr"`
+}
+
+type CreateNetworkResponse struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Cidr      string `json:"cidr"`
+	CreatedAt string `json:"created_at"`
+}
+
+type Network struct {
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Cidr         string  `json:"cidr"`
+	UsedIPs      []VpnIP `json:"used_ips"`      // 存储分配的地址
+	AvailableIPs []VpnIP `json:"available_ips"` // 存储可用的地址
+	CreatedAt    int64   `json:"created_at"`
+}
+
+// Host 表示一个主机
+type Host struct {
+	ID         string
+	Name       string
+	NetworkID  string
+	Role       string
+	CreatedAt  int64
+	LastSeenAt int64
+	// StaticAddresses A list of static addresses for the host
+	StaticAddresses []string
+
+	IPAddress    VpnIP
+	Port         int
+	IsLighthouse bool
+
+	Tags map[string]interface{}
+
+	// Config 主机的配置文件
+	Config config.Config
+}
+
+type QueryNetwork struct {
+	Name          string
+	Cidr          string
+	SortDirection string // 排序方向
+	IncludeCounts bool
+	PageSize      int // 每页大小
+	PageNumber    int // 页码
+}
+
+type UpdateNetwork struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// FindOptions 定义了查询主机数据时的过滤和排序选项
+type FindOptions struct {
+	// 可以添加各种过滤条件,如按名称、IP、标签等进行过滤
+	Filters map[string]interface{}
+
+	// 可以添加排序选项,如按创建时间、名称等进行排序
+	Sort map[string]interface{} // 1 for ascending, -1 for descending
+
+	// 分页选项
+	Limit  int
+	Offset int
+
+	NetworkID    string
+	IPAddress    string
+	Role         string
+	Name         string
+	IsLighthouse bool
+}
 
 type VpnIP uint32
 

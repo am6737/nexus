@@ -32,8 +32,8 @@ type InsideWriter interface {
 	io.Writer
 }
 
-// OutboundController 出站控制器接口
-type OutboundController interface {
+// InboundController 入站控制器接口
+type InboundController interface {
 	Runnable
 	OutsideWriter
 	Listen(internalWriter InsideWriter)
@@ -42,8 +42,8 @@ type OutboundController interface {
 	Close() error
 }
 
-// InboundController 入站控制器接口
-type InboundController interface {
+// OutboundController 入站控制器接口
+type OutboundController interface {
 	Runnable
 	Listen(externalWriter OutsideWriter)
 	Send(p []byte) (n int, err error)
@@ -69,4 +69,28 @@ type LighthouseController interface {
 
 	// IsLighthouse 判断当前节点是否是灯塔节点
 	IsLighthouse() bool
+}
+
+type NetworkController interface {
+	Create(ctx context.Context, cmd *api.CreateNetwork) (*api.CreateNetworkResponse, error)
+	Get(ctx context.Context, id string) (*api.Network, error)
+	GetAll(ctx context.Context, query *api.QueryNetwork) ([]*api.Network, error)
+	Delete(ctx context.Context, id string) error
+	Update(ctx context.Context, cmd *api.UpdateNetwork) (*api.Network, error)
+
+	AllocateAutoAddress(ctx context.Context, networkID string) (api.VpnIP, error)
+	AllocateStaticAddress(ctx context.Context, networkID string, addr api.VpnIP) (api.VpnIP, error)
+	RecycleAddress(ctx context.Context, networkID string, addr api.VpnIP) error
+	UsedAddresses(ctx context.Context, networkID string) ([]api.VpnIP, error)
+	AvailableAddresses(ctx context.Context, networkID string) ([]api.VpnIP, error)
+}
+
+// HostController 定义主机控制器接口
+type HostController interface {
+	Get(ctx context.Context, id string) (*api.Host, error)
+	GetAll(ctx context.Context) ([]*api.Host, error)
+	Find(ctx context.Context, query *api.FindOptions) ([]*api.Host, error)
+	Create(ctx context.Context, cmd *api.Host) (*api.Host, error)
+	Update(ctx context.Context, cmd *api.Host) (*api.Host, error)
+	Delete(ctx context.Context, id string) error
 }

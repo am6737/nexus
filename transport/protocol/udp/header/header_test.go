@@ -56,7 +56,7 @@ func TestDecode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, &Header{
+	assert.Equal(t, Header{
 		Version:        5,
 		MessageType:    4,
 		MessageSubtype: 0,

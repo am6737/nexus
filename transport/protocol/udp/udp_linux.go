@@ -27,50 +27,64 @@ type StdConn struct {
 	batch int
 }
 
+// NewListener 创建一个新的 UDP 监听器。
+// l 是用于记录日志的 logrus.Logger 实例。
+// ip 是要绑定的 IP 地址。
+// port 是要监听的端口号。
+// multi 指定是否启用多地址复用。
+// batch 指定每次读取的数据包数量。
 func NewListener(l *logrus.Logger, ip net.IP, port int, multi bool, batch int) (Conn, error) {
+	// 判断 IP 地址是否为 IPv4，并获取 IPv4 地址。
 	ipV4, isV4 := maybeIPV4(ip)
+
+	// 根据 IP 类型选择地址族。
 	af := unix.AF_INET6
 	if isV4 {
 		af = unix.AF_INET
 	}
+
+	// 创建一个套接字。
 	syscall.ForkLock.RLock()
 	fd, err := unix.Socket(af, unix.SOCK_DGRAM, unix.IPPROTO_UDP)
 	if err == nil {
+		// 在执行 exec 系统调用时关闭文件描述符。
 		unix.CloseOnExec(fd)
 	}
 	syscall.ForkLock.RUnlock()
 
 	if err != nil {
+		// 如果创建套接字失败，则关闭文件描述符并返回错误。
 		unix.Close(fd)
 		return nil, fmt.Errorf("unable to open socket: %s", err)
 	}
 
+	// 如果启用了多地址复用，设置套接字选项。
 	if multi {
 		if err = unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_REUSEPORT, 1); err != nil {
 			return nil, fmt.Errorf("unable to set SO_REUSEPORT: %s", err)
 		}
 	}
 
-	//TODO: support multiple listening IPs (for limiting ipv6)
+	// 准备要绑定的地址。
 	var sa unix.Sockaddr
 	if isV4 {
+		// 如果是 IPv4 地址，创建一个 IPv4 地址结构体并设置端口号。
 		sa4 := &unix.SockaddrInet4{Port: port}
 		copy(sa4.Addr[:], ipV4)
 		sa = sa4
 	} else {
+		// 如果是 IPv6 地址，创建一个 IPv6 地址结构体并设置端口号。
 		sa6 := &unix.SockaddrInet6{Port: port}
 		copy(sa6.Addr[:], ip.To16())
 		sa = sa6
 	}
+
+	// 绑定套接字和地址。
 	if err = unix.Bind(fd, sa); err != nil {
 		return nil, fmt.Errorf("unable to bind to socket: %s", err)
 	}
 
-	//TODO: this may be useful for forcing threads into specific cores
-	//unix.SetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_INCOMING_CPU, x)
-	//v, err := unix.GetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_INCOMING_CPU)
-	//l.Println(v, err)
-
+	// 创建一个新的 StdConn 实例并返回。
 	return &StdConn{sysFd: fd, isV4: isV4, l: l, batch: batch}, err
 }
 

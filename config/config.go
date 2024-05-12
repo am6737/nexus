@@ -16,6 +16,7 @@ type Config struct {
 	Handshake     HandshakeConfig     `yaml:"handshake"`
 	Outbound      []OutboundRule      `yaml:"outbound"`
 	Inbound       []InboundRule       `yaml:"inbound"`
+	Persistence   Persistence         `yaml:"persistence"`
 }
 
 type LighthouseConfig struct {
@@ -26,7 +27,7 @@ type LighthouseConfig struct {
 }
 
 type LocalAllowList struct {
-	Interfaces map[string]bool `yaml:"interfaces"`
+	Interfaces map[string]bool `yaml:"ports"`
 }
 
 type ListenConfig struct {
@@ -76,6 +77,13 @@ type InboundRule struct {
 	Host  []string `yaml:"host"`
 	// "allow" or "deny"
 	Action string `yaml:"action"`
+}
+
+type Persistence struct {
+	Enabled bool   `yaml:"enabled"`
+	Url     string `yaml:"url"`
+	Type    string `yaml:"type"`
+	DB      string `yaml:"db"`
 }
 
 func (r OutboundRule) String() string {
@@ -130,4 +138,80 @@ func Load(filename string) (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+var (
+	defaultListen = ListenConfig{
+		Host:        "0.0.0.0",
+		Port:        7777,
+		Batch:       64,
+		ReadBuffer:  10485760,
+		WriteBuffer: 10485760,
+		Routines:    1,
+	}
+
+	defaultHandshake = HandshakeConfig{
+		HandshakeHost:  30 * time.Second,
+		SyncLighthouse: 60 * time.Second,
+		TryInterval:    10 * time.Second, // 尝试间隔为10秒
+		Retries:        3,                // 尝试次数为3次
+		TriggerBuffer:  10,               // 触发缓冲为10
+		UseRelays:      false,            // 不使用中继
+	}
+
+	defaultTun = TunConfig{
+		Disabled:           false,
+		Dev:                "nexus1",
+		IP:                 "",
+		Mask:               "",
+		DropLocalBroadcast: false,
+		DropMulticast:      false,
+		TxQueue:            500,
+		MTU:                1300,
+	}
+
+	defaultPersistence = Persistence{
+		Enabled: false,
+		Url:     "",
+		Type:    "",
+		DB:      "",
+	}
+
+	defaultLighthouse = LighthouseConfig{
+		Enabled:        true,
+		Interval:       60,
+		Hosts:          nil,
+		LocalAllowList: LocalAllowList{Interfaces: make(map[string]bool)},
+	}
+
+	defaultOutbound = []OutboundRule{
+		{
+			Port:   AnyPortValue,
+			Proto:  "icmp",
+			Host:   nil,
+			Action: "allow",
+		},
+	}
+
+	defaultInbound = []InboundRule{
+		{
+			Port:   AnyPortValue,
+			Proto:  "icmp",
+			Host:   nil,
+			Action: "allow",
+		},
+	}
+)
+
+// GenerateConfigTemplate 生成通用配置模板
+func GenerateConfigTemplate() Config {
+	return Config{
+		StaticHostMap: make(map[string][]string),
+		Lighthouse:    defaultLighthouse,
+		Listen:        defaultListen,
+		Tun:           defaultTun,
+		Handshake:     defaultHandshake,
+		Outbound:      defaultOutbound,
+		Inbound:       defaultInbound,
+	}
 }

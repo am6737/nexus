@@ -25,12 +25,15 @@ type ControllersManager struct {
 	internalWriter io.Writer
 
 	Handshake  interfaces.HandshakeController
-	Inbound    interfaces.InboundController
-	Outbound   interfaces.OutboundController
+	Inbound    interfaces.OutboundController
+	Outbound   interfaces.InboundController
 	lighthouse interfaces.LighthouseController
+	Network    interfaces.NetworkController
+
+	runnables runnables
 }
 
-func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun.Device) *ControllersManager {
+func NewControllersManager(ctx context.Context, config *config.Config, logger *logrus.Logger, tun tun.Device) *ControllersManager {
 	localVpnIP := api.Ip2VpnIp(tun.Cidr().IP)
 
 	hosts := host.NewHostMap(logger, tun.Cidr(), nil)
@@ -53,7 +56,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 
 	// Initialize inbound controller
 	inboundLogger := logger.WithField("controller", "Inbound")
-	inboundController := &InboundController{
+	inboundController := &OutboundController{
 		cfg:        config,
 		mtu:        tun.MTU(),
 		localVpnIP: localVpnIP,
@@ -64,7 +67,7 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 
 	// Initialize outbound controller
 	outboundLogger := logger.WithField("controller", "Outbound")
-	outboundController := &OutboundController{
+	outboundController := &InboundControllers{
 		localVpnIP: localVpnIP,
 		logger:     outboundLogger.Logger,
 		cfg:        config,
@@ -119,6 +122,15 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 	outboundController.lighthouse = lighthouseController
 	handshakeController.lighthouse = lighthouseController
 
+	rs := runnables{
+		runnables: []interfaces.Runnable{
+			inboundController,
+			outboundController,
+			handshakeController,
+			lighthouseController,
+		},
+	}
+
 	// Initialize controllers manager
 	controllersManager := &ControllersManager{
 		logger:         logger,
@@ -127,32 +139,46 @@ func NewControllersManager(config *config.Config, logger *logrus.Logger, tun tun
 		Handshake:      handshakeController,
 		Inbound:        inboundController,
 		Outbound:       outboundController,
+		runnables:      rs,
 	}
 
 	return controllersManager
 }
 
+type runnables struct {
+	runnables []interfaces.Runnable
+}
+
 func (c *ControllersManager) Start(ctx context.Context) error {
-	if err := c.Inbound.Start(ctx); err != nil {
-		return err
-	}
+	//if err := c.Inbound.Start(ctx); err != nil {
+	//	return err
+	//}
+	//
+	//if err := c.Outbound.Start(ctx); err != nil {
+	//	return err
+	//}
+	//
+	//if err := c.Handshake.Start(ctx); err != nil {
+	//	return err
+	//}
+	//
+	//if err := c.lighthouse.Start(ctx); err != nil {
+	//	return err
+	//}
 
-	if err := c.Outbound.Start(ctx); err != nil {
-		return err
-	}
-
-	if err := c.Handshake.Start(ctx); err != nil {
-		return err
-	}
-
-	if err := c.lighthouse.Start(ctx); err != nil {
-		return err
+	for _, r := range c.runnables.runnables {
+		if err := r.Start(ctx); err != nil {
+			return err
+		}
+		//go func(rn interfaces.Runnable) {
+		//	if err := rn.Start(ctx); err != nil {
+		//		c.logger.WithField("error", err).Error("Failed to start controller")
+		//	}
+		//}(r)
 	}
 
 	go c.Inbound.Listen(c.Outbound)
-
 	go c.Outbound.Listen(c.internalWriter)
-
 	return nil
 }
 
