@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
@@ -79,8 +78,8 @@ func (ic *OutboundController) consumeInsidePacket(data []byte, packet *packet.Pa
 		return
 	}
 	//
-	fmt.Println("data => ", data)
-	fmt.Println("pk => ", packet)
+	//fmt.Println("data => ", data)
+	//fmt.Println("pk => ", packet)
 	//fmt.Println("len(data) => ", len(data))
 
 	if packet.RemoteIP == ic.localVpnIP {

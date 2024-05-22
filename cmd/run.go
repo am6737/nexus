@@ -1,25 +1,17 @@
-package main
+package cmd
 
 import (
-	"flag"
+	"context"
 	"github.com/am6737/nexus/config"
 	"github.com/am6737/nexus/controllers"
 	"github.com/am6737/nexus/tun"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
+	"github.com/urfave/cli/v2"
 	"os"
 )
 
-var (
-	configFile string
-)
-
-func init() {
-	flag.StringVar(&configFile, "config", "", "Configuration file path.")
-	flag.Parse()
-}
-
-func main() {
+func run(c *cli.Context) error {
+	configFile := c.String("config")
 	cfg, err := config.Load(configFile)
 	if err != nil {
 		panic(err)
@@ -37,7 +29,7 @@ func main() {
 	tunDevice, err := tun.NewDeviceFromConfig(cfg, nil)
 	if err != nil {
 		logger.WithError(err).Error("Error creating DarwinTun")
-		return
+		return err
 	}
 	defer tunDevice.Close()
 
@@ -47,4 +39,6 @@ func main() {
 		panic(err)
 	}
 	ctrl.Shutdown()
+
+	return nil
 }
