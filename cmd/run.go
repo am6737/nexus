@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"github.com/am6737/nexus/config"
 	"github.com/am6737/nexus/controllers"
 	"github.com/am6737/nexus/tun"
@@ -33,7 +32,7 @@ func run(c *cli.Context) error {
 	}
 	defer tunDevice.Close()
 
-	ctx := context.Background()
+	ctx := c.Context
 	ctrl := controllers.NewControllersManager(ctx, cfg, logger, tunDevice)
 	if err := ctrl.Start(ctx); err != nil {
 		panic(err)

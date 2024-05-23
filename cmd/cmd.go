@@ -34,8 +34,15 @@ var App = &cli.App{
 			Action: uninstall,
 		},
 		{
-			Name:   "start",
-			Usage:  "start nexus",
+			Name:  "start",
+			Usage: "start nexus",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "config",
+					Usage: "config file path",
+					Value: "/Users/lms/Documents/biset/nexus/config.yaml",
+				},
+			},
 			Action: start,
 		},
 		{
