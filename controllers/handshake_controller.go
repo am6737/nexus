@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/config"
@@ -91,7 +92,7 @@ func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet,
 		WithField("addr", rAddr).
 		WithField("type", h.MessageType).
 		WithField("subtype", h.MessageSubtype).
-		Info("HandshakeController.HandleRequest")
+		Debug("处理握手请求")
 	switch h.MessageSubtype {
 	case header.HostHandshakeRequest:
 		hc.handleHostHandshakeRequest(rAddr, pk.RemoteIP)
@@ -163,7 +164,7 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 	hc.syncLighthouse(ctx)
 
 	go func() {
-		handshakeHostTicker := time.NewTicker(5 * time.Second)
+		handshakeHostTicker := time.NewTicker(hc.config.SyncLighthouse)
 		defer handshakeHostTicker.Stop()
 		for {
 			select {
@@ -183,6 +184,9 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case <-syncLighthouseTicker.C:
+				for k, v := range hc.mainHostMap.GetAllHostMap() {
+					fmt.Printf("host: %s info%v\n", k, v)
+				}
 				hc.syncLighthouse(ctx)
 			}
 		}
@@ -297,10 +301,13 @@ func (hc *HandshakeController) Handshake(vip api.VpnIP, packet []byte) error {
 // handleOutbound 处理传出的握手消息
 func (hc *HandshakeController) handleOutbound(hr HandshakeRequest, lighthouseTriggered bool) {
 	// 获取握手主机信息
+	hc.Lock() // 加锁
 	handshakeHostInfo, exists := hc.handshakeHosts[hr.VIP]
 	if !exists {
+		hc.Unlock()
 		return
 	}
+	hc.Unlock()
 	handshakeHostInfo.Lock()
 	defer handshakeHostInfo.Unlock()
 
@@ -315,15 +322,11 @@ func (hc *HandshakeController) handleOutbound(hr HandshakeRequest, lighthouseTri
 	// 获取远程地址列表
 	remoteAddrList := hc.mainHostMap.GetRemoteAddrList(hr.VIP)
 
-	//fmt.Println("remoteAddrList => ", remoteAddrList)
-
 	// 转换为 net.Addr 类型的地址列表
 	var netRemoteAddrList []net.Addr
 
 	// 发送握手消息到远程地址列表中的每个地址
 	for _, remoteAddr := range remoteAddrList {
-		//fmt.Println("handshakePacket => ", hr.Packet)
-
 		hc.logger.
 			WithField("vpnIP", hr.VIP).
 			WithField("addr", remoteAddr).

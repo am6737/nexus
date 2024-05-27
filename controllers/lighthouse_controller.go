@@ -285,7 +285,7 @@ func (lc *LighthouseController) handleHostSyncReply(addr *udp.Addr, pk *packet.P
 		lc.logger.
 			WithField("remoteIP", i).
 			WithField("addr", i2.Remote).
-			Info("收到的同步地址信息")
+			Debug("收到的同步地址信息")
 		punchPacket, err := lc.buildHandshakeHostRequestPacket(i)
 		if err != nil {
 			lc.logger.WithError(err).Error("buildTestPacket")

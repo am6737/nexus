@@ -1,6 +1,7 @@
 package host
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/transport/protocol/udp"
@@ -176,12 +177,19 @@ func (h *HostInfo) GetRemoteAddrList() []*udp.Addr {
 }
 
 type HostInfo struct {
-	Remote  *udp.Addr
-	Remotes RemoteList
-	//ConnectionState *ConnectionState
+	Remote        *udp.Addr
+	Remotes       RemoteList
 	RemoteIndexId uint32
 	LocalIndexId  uint32
 	VpnIp         api.VpnIP
+}
+
+func (h *HostInfo) String() string {
+	marshal, err := json.Marshal(h)
+	if err != nil {
+		return ""
+	}
+	return string(marshal)
 }
 
 // RemoteList is a unifying concept for lighthouse servers and clients as well as hostinfos.
