@@ -77,23 +77,13 @@ func (ic *OutboundController) consumeInsidePacket(data []byte, packet *packet.Pa
 		ic.logger.WithField("packet", packet).Debugf("Error while validating outbound packet: %s", err)
 		return
 	}
-	//
-	//fmt.Println("data => ", data)
-	//fmt.Println("pk => ", packet)
-	//fmt.Println("len(data) => ", len(data))
 
 	if packet.RemoteIP == ic.localVpnIP {
-		// Immediately forward packets from self to self.
-		// This should only happen on Darwin-based and FreeBSD handshakeHosts, which
-		// routes packets from the Nebula IP to the Nebula IP through the Nebula
-		// TUN device.
 		if ifce.ImmediatelyForwardToSelf {
 			if _, err := internalWriter.Write(data); err != nil {
 				ic.logger.WithError(err).Error("Failed to forward to tun")
 			}
 		}
-		// Otherwise, drop. On linux, we should never see these packets - Linux
-		// routes packets from the nebula IP to the nebula IP through the loopback device.
 		return
 	}
 
@@ -102,16 +92,6 @@ func (ic *OutboundController) consumeInsidePacket(data []byte, packet *packet.Pa
 		ic.logger.WithError(err).Warn("Dropped packet due to rule")
 		return
 	}
-	//ruleAction := ic.checkRules(packet)
-	//if ruleAction == "deny" {
-	//	ic.logger.WithFields(logrus.Fields{
-	//		"sourceIP": packet.LocalIP,
-	//		"destIP":   packet.RemoteIP,
-	//		"protocol": packet.Protocol,
-	//		"port":     packet.RemotePort,
-	//	}).Warn("Dropped packet due to rule")
-	//	return
-	//}
 
 	if err := externalWriter.WriteToVIP(data, packet.RemoteIP); err != nil {
 		ic.logger.WithError(err).Error("Error while forwarding outbound packet")

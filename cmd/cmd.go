@@ -18,7 +18,7 @@ var App = &cli.App{
 				&cli.StringFlag{
 					Name:  "config",
 					Usage: "config file path",
-					Value: "/Users/lms/Documents/biset/nexus/config.yaml",
+					Value: "config.yaml",
 				},
 			},
 			Action: run,
@@ -40,7 +40,7 @@ var App = &cli.App{
 				&cli.StringFlag{
 					Name:  "config",
 					Usage: "config file path",
-					Value: "/Users/lms/Documents/biset/nexus/config.yaml",
+					Value: "config.yaml",
 				},
 			},
 			Action: start,
@@ -51,8 +51,19 @@ var App = &cli.App{
 			Action: stop,
 		},
 		{
-			Name:   "enroll",
-			Usage:  "enroll nexus",
+			Name:  "enroll",
+			Usage: "enroll nexus",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "code",
+					Usage: "enrollment code",
+				},
+				&cli.StringFlag{
+					Name:  "server",
+					Usage: "server addr",
+					Value: "localhost:6976",
+				},
+			},
 			Action: enroll,
 		},
 	},

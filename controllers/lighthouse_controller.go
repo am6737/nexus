@@ -198,6 +198,7 @@ func (lc *LighthouseController) Store(info *host.HostInfo) error {
 
 func (lc *LighthouseController) handleHostPunch(addr *udp.Addr, vpnIP api.VpnIP, p []byte) {
 	lc.logger.
+		WithField("localIP", lc.localVpnIP).
 		WithField("vpnIp", vpnIP).
 		WithField("addr", addr).
 		Info("打洞请求")

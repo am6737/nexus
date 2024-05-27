@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	appleUTUNCtl = "com.apple.net.utun_control"
+	SYSPROTO_CONTROL = 2 //define SYSPROTO_CONTROL 2 /* kernel control protocol */
+	appleUTUNCtl     = "com.apple.net.utun_control"
 	//appleCTLIOCGINFO = (0x40000000 | 0x80000000) | ((100 & 0x1fff) << 16) | uint32(byte('N'))<<8 | 3
 
 	appleCTLIOCGINFO = 3227799043
@@ -98,7 +99,7 @@ func newTun(name string, cidr *net.IPNet, mtu int, txQueueLen int, multiqueue bo
 	}
 
 	// Create a new system socket for tun
-	if fd, err = syscall.Socket(syscall.AF_SYSTEM, syscall.SOCK_DGRAM, 2); err != nil {
+	if fd, err = syscall.Socket(syscall.AF_SYSTEM, syscall.SOCK_DGRAM, SYSPROTO_CONTROL); err != nil {
 		return nil, fmt.Errorf("system socket: %v", err)
 	}
 
@@ -223,17 +224,17 @@ func (t *tun) Up() error {
 		return err
 	}
 
-	// Get the current flags of the device
-	ifrf := ifReq{Name: devName}
-	if err := ioctl(fd, unix.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifrf))); err != nil {
-		log.Printf("unable to get device flags: %v", err)
-		return err
-	}
-
 	// Set the MTU of the device
 	ifm := ifreqMTU{Name: devName, MTU: int32(t.defaultMTU)}
 	if err := ioctl(fd, unix.SIOCSIFMTU, uintptr(unsafe.Pointer(&ifm))); err != nil {
 		log.Printf("unable to set device MTU: %v", err)
+		return err
+	}
+
+	// Get the current flags of the device
+	ifrf := ifReq{Name: devName}
+	if err := ioctl(fd, unix.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifrf))); err != nil {
+		log.Printf("unable to get device flags: %v", err)
 		return err
 	}
 
@@ -273,10 +274,6 @@ func (t *tun) Up() error {
 	copy(routeAddr.IP[:], addr[:])
 	copy(maskAddr.IP[:], mask[:])
 
-	//fmt.Println("routeAddr => ", routeAddr)
-	//fmt.Println("maskAddr => ", maskAddr)
-	//fmt.Println("linkAddr => ", linkAddr)
-
 	// Add the route to the routing table
 	if err = addRoute(routeSock, routeAddr, maskAddr, linkAddr); err != nil {
 		if errors.Is(err, unix.EEXIST) {
@@ -301,11 +298,8 @@ func (t *tun) Down() error {
 }
 
 func (t *tun) Read(to []byte) (int, error) {
-
 	buf := make([]byte, len(to)+4)
-
 	n, err := t.ReadWriteCloser.Read(buf)
-
 	copy(to, buf[4:])
 	return n - 4, err
 }

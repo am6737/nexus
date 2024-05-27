@@ -46,7 +46,6 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 
 	// 设置 UDP 服务器
 	udpServer, err := udp.NewListener(logger, listenHost.IP, config.Listen.Port, config.Listen.Routines > 1, config.Listen.Batch)
-	//udpServer, err := udp.NewGenericListener(oc.logger, listenHost.IP, oc.cfg.Listen.Port, oc.cfg.Listen.Routines > 1, oc.cfg.Listen.Batch)
 	if err != nil {
 		panic(err)
 	}

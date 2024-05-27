@@ -11,6 +11,7 @@ import (
 	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/transport/protocol/udp"
 	"github.com/am6737/nexus/transport/protocol/udp/header"
+	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
@@ -60,6 +61,8 @@ func (oc *InboundControllers) WriteToVIP(p []byte, vip api.VpnIP) error {
 		return err
 	}
 
+	tp := p
+
 	// 创建新的数据包，将头部和数据包拼接
 	p = append(messagePacket, p...)
 
@@ -69,16 +72,22 @@ func (oc *InboundControllers) WriteToVIP(p []byte, vip api.VpnIP) error {
 			if lighthouse != nil {
 				oc.logger.WithField("目标地址", vip).
 					WithField("灯塔地址", lighthouse.Remote).
-					Info("出站流量转发到灯塔 OutboundController => Lighthouse")
+					Info("出站流量转发到灯塔")
 				return oc.outside.WriteTo(p, lighthouse.Remote)
 			}
 		}
 		return fmt.Errorf("host %s not found", vip)
 	}
 
+	pk := &packet.Packet{}
+	if err := utils.ParsePacket(tp, false, pk); err != nil {
+		oc.logger.WithField("packet", pk).Debugf("Error while validating outbound packet: %s", err)
+		return err
+	}
+
 	oc.logger.WithField("目标地址", vip).
 		WithField("目标远程地址", host.Remote).
-		WithField("数据包", p).
+		WithField("数据包", pk).
 		Info("出站流量")
 	return oc.outside.WriteTo(p, host.Remote)
 }

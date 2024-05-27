@@ -38,6 +38,8 @@ const (
 	HostPunchReply
 	HostHandshakeRequest
 	HostHandshakeReply
+
+	ExchangePublicKey
 )
 
 var subtTypeMap = map[MessageSubType]string{
@@ -50,6 +52,7 @@ var subtTypeMap = map[MessageSubType]string{
 	HostPunchReply:         "hostPunchReply",
 	HostHandshakeRequest:   "hostHandshakeRequest",
 	HostHandshakeReply:     "hostHandshakeReply",
+	ExchangePublicKey:      "exchangePublicKey",
 }
 
 var typeMap = map[MessageType]string{
@@ -99,6 +102,10 @@ func BuildHandshakeAndHostPunch(remoteIndex uint32, messageCounter uint64) ([]by
 
 func BuildHandshakeAndHostReply(remoteIndex uint32, messageCounter uint64) []byte {
 	return buildPacket(Handshake, HostHandshakeReply, remoteIndex, messageCounter)
+}
+
+func BuildHandshakeAndExchangePublic(remoteIndex uint32, messageCounter uint64) []byte {
+	return buildPacket(Handshake, ExchangePublicKey, remoteIndex, messageCounter)
 }
 
 func buildPacket(mt MessageType, mst MessageSubType, remoteIndex uint32, messageCounter uint64) []byte {
