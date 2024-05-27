@@ -23,4 +23,4 @@ test: fmt vet## Run unittests
 	@go test -short ./...
 
 build: dep ## Build the binary file
-	@go build -ldflags "-s -w" -o nxclient main.go
+	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags "-s -w" -o nxclient-$(GOOS)-$(GOARCH) main.go
