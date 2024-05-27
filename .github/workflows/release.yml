@@ -6,15 +6,33 @@ on:
       - 'v*.*.*'
 
 jobs:
+  create_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
   build:
+    needs: create_release
     runs-on: ubuntu-latest
     strategy:
       matrix:
         goos: [linux, darwin]
         goarch: [amd64, arm64]
         exclude:
-#          - goos: windows
-#            goarch: arm64
+          #          - goos: windows
+          #            goarch: arm64
           - goos: darwin
             goarch: arm64
 
@@ -31,23 +49,12 @@ jobs:
         run: |
           make build GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./nxclient-${{ matrix.goos }}-${{ matrix.goarch }}
           asset_name: nxclient-${{ matrix.goos }}-${{ matrix.goarch }}
           asset_content_type: application/octet-stream
