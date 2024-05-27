@@ -59,7 +59,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.upload_url }}
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./nxclient-${{ matrix.goos }}-${{ matrix.goarch }}
           asset_name: nxclient-${{ matrix.goos }}-${{ matrix.goarch }}
           asset_content_type: application/octet-stream
