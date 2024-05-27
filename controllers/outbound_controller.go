@@ -74,7 +74,7 @@ func (ic *OutboundController) Listen(externalWriter interfaces.OutsideWriter) {
 
 func (ic *OutboundController) consumeInsidePacket(data []byte, packet *packet.Packet, internalWriter io.Writer, externalWriter interfaces.OutsideWriter) {
 	if err := utils.ParsePacket(data, false, packet); err != nil {
-		ic.logger.WithField("packet", packet).Debugf("consumeInsidePacket Error while validating outbound packet: %s", err)
+		//ic.logger.WithField("packet", packet).Debugf("consumeInsidePacket Error while validating outbound packet: %s", err)
 		return
 	}
 
