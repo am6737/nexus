@@ -139,7 +139,7 @@ func (hc *HandshakeController) handleHostHandshakeRequest(addr *udp.Addr, vip ap
 				hc.logger.WithFields(logrus.Fields{
 					"vpnPeer": vpnPeer.String(),
 					"vpnIP":   vip,
-				}).Info("Sent punch packet")
+				}).Debug("Sent punch packet")
 			}
 		}()
 	}
