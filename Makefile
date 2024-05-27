@@ -1,3 +1,5 @@
+CGO_ENABLED ?= 0
+
 # 防止命令行参数被误认为是目标
 %:
 	@:
@@ -23,4 +25,4 @@ test: fmt vet## Run unittests
 	@go test -short ./...
 
 build: dep ## Build the binary file
-	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags "-s -w" -o nxclient-$(GOOS)-$(GOARCH) main.go
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=$(CGO_ENABLED) go build -ldflags "-s -w" -o nxclient-$(GOOS)-$(GOARCH) main.go

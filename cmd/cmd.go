@@ -61,7 +61,7 @@ var App = &cli.App{
 				&cli.StringFlag{
 					Name:  "server",
 					Usage: "server addr",
-					Value: "localhost:6976",
+					Value: "localhost:7777",
 				},
 			},
 			Action: enroll,
