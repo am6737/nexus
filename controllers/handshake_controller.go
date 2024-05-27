@@ -105,6 +105,7 @@ func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet,
 		Debug("处理握手请求")
 
 	hc.handleHostHandshakeReply(rAddr, pk.RemoteIP)
+	hc.mainHostMap.AddHost(pk.RemoteIP, rAddr)
 
 	switch h.MessageSubtype {
 	case header.HostHandshakeRequest:
