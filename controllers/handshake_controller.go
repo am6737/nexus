@@ -154,23 +154,27 @@ func (hc *HandshakeController) handleHostHandshakeReply(addr *udp.Addr, vip api.
 			"info":  v,
 		}).Info("handshakeHosts info")
 	}
-	//if host, exists := hc.handshakeHosts[vip]; exists {
-	//	host.Lock()
-	//	host.HostInfo.VpnIp = vip
-	//	host.HostInfo.Remote = addr
-	//	host.LastRemotes = append(host.LastRemotes, addr)
-	//	host.LastCompleteTime = time.Now()
-	//	host.Ready = true
-	//	host.Unlock()
-	//}
-	h := hc.handshakeHosts[vip]
-	h.Lock()
-	h.HostInfo.VpnIp = vip
-	h.HostInfo.Remote = addr
-	h.LastRemotes = append(h.LastRemotes, addr)
-	h.LastCompleteTime = time.Now()
-	h.Ready = true
-	h.Unlock()
+	if h, exists := hc.handshakeHosts[vip]; exists {
+		h.Lock()
+		h.HostInfo.VpnIp = vip
+		h.HostInfo.Remote = addr
+		h.LastRemotes = append(h.LastRemotes, addr)
+		h.LastCompleteTime = time.Now()
+		h.Ready = true
+		h.Unlock()
+	} else {
+		// 创建新的握手主机信息
+		hh := &HandshakeHostInfo{
+			StartTime: time.Now(),
+			HostInfo:  &host.HostInfo{},
+		}
+		hh.HostInfo.VpnIp = vip
+		hh.HostInfo.Remote = addr
+		hh.LastRemotes = append(hh.LastRemotes, addr)
+		hh.LastCompleteTime = time.Now()
+		hh.Ready = true
+		hc.handshakeHosts[vip] = hh
+	}
 }
 
 // Start 启动 HandshakeController，监听发送握手消息的触发通道和定时器
