@@ -60,7 +60,7 @@ func enroll(c *cli.Context) error {
 
 	fmt.Println(string(yamlBytes))
 
-	if err = ioutil.WriteFile("config-test.yaml", yamlBytes, 0644); err != nil {
+	if err = ioutil.WriteFile("config.yaml", yamlBytes, 0644); err != nil {
 		return fmt.Errorf("could not write config to file: %v", err)
 	}
 
