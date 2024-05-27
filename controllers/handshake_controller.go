@@ -139,15 +139,24 @@ func (hc *HandshakeController) handleHostHandshakeRequest(addr *udp.Addr, vip ap
 func (hc *HandshakeController) handleHostHandshakeReply(addr *udp.Addr, vip api.VpnIP) {
 	hc.handshakeHostsRwMutex.Lock()
 	defer hc.handshakeHostsRwMutex.Unlock()
-	if host, exists := hc.handshakeHosts[vip]; exists {
-		host.Lock()
-		host.HostInfo.VpnIp = vip
-		host.HostInfo.Remote = addr
-		host.LastRemotes = append(host.LastRemotes, addr)
-		host.LastCompleteTime = time.Now()
-		host.Ready = true
-		host.Unlock()
-	}
+	//if host, exists := hc.handshakeHosts[vip]; exists {
+	//	host.Lock()
+	//	host.HostInfo.VpnIp = vip
+	//	host.HostInfo.Remote = addr
+	//	host.LastRemotes = append(host.LastRemotes, addr)
+	//	host.LastCompleteTime = time.Now()
+	//	host.Ready = true
+	//	host.Unlock()
+	//}
+	h, _ := hc.handshakeHosts[vip]
+	h.Lock()
+	h.HostInfo.VpnIp = vip
+	h.HostInfo.Remote = addr
+	h.LastRemotes = append(h.LastRemotes, addr)
+	h.LastCompleteTime = time.Now()
+	h.Ready = true
+	h.Unlock()
+
 }
 
 // Start 启动 HandshakeController，监听发送握手消息的触发通道和定时器
