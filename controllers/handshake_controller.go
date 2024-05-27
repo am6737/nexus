@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
@@ -35,6 +36,14 @@ type HandshakeHostInfo struct {
 	LastRemotes      []net.Addr           // 上次发送握手消息的远程地址
 	PacketStore      []*host.CachedPacket // 待发送的握手数据包
 	HostInfo         *host.HostInfo       // 主机信息
+}
+
+func (h *HandshakeHostInfo) String() string {
+	marshal, err := json.Marshal(h)
+	if err != nil {
+		return ""
+	}
+	return string(marshal)
 }
 
 var _ interfaces.HandshakeController = &HandshakeController{}
@@ -139,6 +148,12 @@ func (hc *HandshakeController) handleHostHandshakeRequest(addr *udp.Addr, vip ap
 func (hc *HandshakeController) handleHostHandshakeReply(addr *udp.Addr, vip api.VpnIP) {
 	hc.handshakeHostsRwMutex.Lock()
 	defer hc.handshakeHostsRwMutex.Unlock()
+	for k, v := range hc.handshakeHosts {
+		hc.logger.WithFields(logrus.Fields{
+			"vpnIP": k,
+			"info":  v,
+		}).Info("handshakeHosts info")
+	}
 	//if host, exists := hc.handshakeHosts[vip]; exists {
 	//	host.Lock()
 	//	host.HostInfo.VpnIp = vip
@@ -148,7 +163,7 @@ func (hc *HandshakeController) handleHostHandshakeReply(addr *udp.Addr, vip api.
 	//	host.Ready = true
 	//	host.Unlock()
 	//}
-	h, _ := hc.handshakeHosts[vip]
+	h := hc.handshakeHosts[vip]
 	h.Lock()
 	h.HostInfo.VpnIp = vip
 	h.HostInfo.Remote = addr
@@ -156,7 +171,6 @@ func (hc *HandshakeController) handleHostHandshakeReply(addr *udp.Addr, vip api.
 	h.LastCompleteTime = time.Now()
 	h.Ready = true
 	h.Unlock()
-
 }
 
 // Start 启动 HandshakeController，监听发送握手消息的触发通道和定时器
