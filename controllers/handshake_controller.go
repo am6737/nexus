@@ -104,14 +104,13 @@ func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet,
 		WithField("subtype", h.MessageSubtype).
 		Debug("处理握手请求")
 
-	hc.handleHostHandshakeReply(rAddr, pk.RemoteIP)
 	hc.mainHostMap.AddHost(pk.RemoteIP, rAddr)
 
 	switch h.MessageSubtype {
 	case header.HostHandshakeRequest:
 		hc.handleHostHandshakeRequest(rAddr, pk.RemoteIP)
 	case header.HostHandshakeReply:
-		//hc.handleHostHandshakeReply(rAddr, pk.RemoteIP)
+		hc.handleHostHandshakeReply(rAddr, pk.RemoteIP)
 	}
 }
 
@@ -121,6 +120,8 @@ func (hc *HandshakeController) handleHostHandshakeRequest(addr *udp.Addr, vip ap
 		hc.logger.WithError(err).Error("Failed to build handshake host reply packet")
 		return
 	}
+
+	hc.AddHandshakeHost(vip, addr, replyPacket)
 
 	// 执行单次打洞的函数
 	punch := func(vpnPeer *udp.Addr) {
@@ -147,34 +148,35 @@ func (hc *HandshakeController) handleHostHandshakeRequest(addr *udp.Addr, vip ap
 }
 
 func (hc *HandshakeController) handleHostHandshakeReply(addr *udp.Addr, vip api.VpnIP) {
+	hc.UpdateHandshakeHost(vip, addr)
+}
+
+func (hc *HandshakeController) AddHandshakeHost(vip api.VpnIP, addr *udp.Addr, pk []byte) {
 	hc.handshakeHostsRwMutex.Lock()
 	defer hc.handshakeHostsRwMutex.Unlock()
-	for k, v := range hc.handshakeHosts {
-		hc.logger.WithFields(logrus.Fields{
-			"vpnIP": k,
-			"info":  v,
-		}).Info("handshakeHosts info")
+
+	if _, exists := hc.handshakeHosts[vip]; !exists {
+		hc.handshakeHosts[vip] = &HandshakeHostInfo{
+			StartTime:   time.Now(),
+			HostInfo:    &host.HostInfo{VpnIp: vip, Remote: addr},
+			LastRemotes: []net.Addr{addr},
+			packet:      pk,
+		}
 	}
+}
+
+func (hc *HandshakeController) UpdateHandshakeHost(vip api.VpnIP, addr *udp.Addr) {
+	hc.handshakeHostsRwMutex.Lock()
+	defer hc.handshakeHostsRwMutex.Unlock()
+
 	if h, exists := hc.handshakeHosts[vip]; exists {
 		h.Lock()
+		defer h.Unlock()
 		h.HostInfo.VpnIp = vip
 		h.HostInfo.Remote = addr
 		h.LastRemotes = append(h.LastRemotes, addr)
 		h.LastCompleteTime = time.Now()
 		h.Ready = true
-		h.Unlock()
-	} else {
-		// 创建新的握手主机信息
-		hh := &HandshakeHostInfo{
-			StartTime: time.Now(),
-			HostInfo:  &host.HostInfo{},
-		}
-		hh.HostInfo.VpnIp = vip
-		hh.HostInfo.Remote = addr
-		hh.LastRemotes = append(hh.LastRemotes, addr)
-		hh.LastCompleteTime = time.Now()
-		hh.Ready = true
-		hc.handshakeHosts[vip] = hh
 	}
 }
 
@@ -268,7 +270,7 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 			WithField("lightHouse", lightHouse.VpnIp).
 			WithField("addr", lightHouse.Remote).
 			WithField("localIndex", hc.localIndexID).
-			Debug("send lightHouse sync handshake packet")
+			Debug("发送灯塔同步握手数据包")
 		if err := hc.Handshake(lightHouse.VpnIp, p); err != nil {
 			hc.logger.Errorf("Error initiating handshake for %s: %v", lightHouse.VpnIp, err)
 		}
