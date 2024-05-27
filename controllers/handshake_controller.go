@@ -94,11 +94,14 @@ func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet,
 		WithField("type", h.MessageType).
 		WithField("subtype", h.MessageSubtype).
 		Debug("处理握手请求")
+
+	hc.handleHostHandshakeReply(rAddr, pk.RemoteIP)
+
 	switch h.MessageSubtype {
 	case header.HostHandshakeRequest:
 		hc.handleHostHandshakeRequest(rAddr, pk.RemoteIP)
 	case header.HostHandshakeReply:
-		hc.handleHostHandshakeReply(rAddr, pk.RemoteIP)
+		//hc.handleHostHandshakeReply(rAddr, pk.RemoteIP)
 	}
 }
 
