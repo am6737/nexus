@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
-	"strconv"
 	"time"
 )
 
@@ -64,7 +63,7 @@ type HandshakeConfig struct {
 }
 
 type OutboundRule struct {
-	Port  AnyPort  `yaml:"port"`
+	Port  string   `yaml:"port"`
 	Proto string   `yaml:"proto"`
 	Host  []string `yaml:"host"`
 	// "allow" or "deny"
@@ -72,7 +71,7 @@ type OutboundRule struct {
 }
 
 type InboundRule struct {
-	Port  AnyPort  `yaml:"port"`
+	Port  string   `yaml:"port"`
 	Proto string   `yaml:"proto"`
 	Host  []string `yaml:"host"`
 	// "allow" or "deny"
@@ -92,38 +91,6 @@ func (r OutboundRule) String() string {
 
 func (r InboundRule) String() string {
 	return fmt.Sprintf("port=%v proto=%s hosts=%v action=%s", r.Port, r.Proto, r.Host, r.Action)
-}
-
-type AnyPort uint16
-
-const AnyPortValue AnyPort = 0
-
-func (p AnyPort) ToUint16() uint16 {
-	return uint16(p)
-}
-
-func (p *AnyPort) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var v interface{}
-	if err := unmarshal(&v); err != nil {
-		return err
-	}
-	switch value := v.(type) {
-	case string:
-		if value == "any" {
-			*p = AnyPortValue
-		} else {
-			port, err := strconv.ParseUint(value, 10, 16)
-			if err != nil {
-				return err
-			}
-			*p = AnyPort(port)
-		}
-	case int, int32, int64:
-		*p = AnyPort(value.(int))
-	default:
-		return fmt.Errorf("invalid port value: %v", v)
-	}
-	return nil
 }
 
 func Load(filename string) (*Config, error) {
@@ -186,7 +153,7 @@ var (
 
 	defaultOutbound = []OutboundRule{
 		{
-			Port:   AnyPortValue,
+			Port:   "any",
 			Proto:  "icmp",
 			Host:   nil,
 			Action: "allow",
@@ -195,7 +162,7 @@ var (
 
 	defaultInbound = []InboundRule{
 		{
-			Port:   AnyPortValue,
+			Port:   "any",
 			Proto:  "icmp",
 			Host:   nil,
 			Action: "allow",
