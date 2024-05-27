@@ -270,7 +270,7 @@ func (lc *LighthouseController) handleHostSyncReply(addr *udp.Addr, pk *packet.P
 		WithField("remoteIP", pk.RemoteIP).
 		WithField("addr", addr).
 		WithField("pk", pk).
-		Info("收到灯塔同步回复请求")
+		Info("Received Lighthouse sync reply")
 	p = p[header.Len+20:]
 	var hs map[api.VpnIP]*host.HostInfo
 	if err := json.Unmarshal(p, &hs); err != nil {
@@ -285,7 +285,7 @@ func (lc *LighthouseController) handleHostSyncReply(addr *udp.Addr, pk *packet.P
 		lc.logger.
 			WithField("remoteIP", i).
 			WithField("addr", i2.Remote).
-			Debug("收到的同步地址信息")
+			Debug("Sync address information received")
 		punchPacket, err := lc.buildHandshakeHostRequestPacket(i)
 		if err != nil {
 			lc.logger.WithError(err).Error("buildTestPacket")
@@ -294,7 +294,7 @@ func (lc *LighthouseController) handleHostSyncReply(addr *udp.Addr, pk *packet.P
 		lc.logger.
 			WithField("remoteIP", i).
 			WithField("addr", i2.Remote).
-			Debug("发送握手消息")
+			Debug("Send handshake message")
 		if err := lc.ow.WriteToAddr(punchPacket, i2.Remote); err != nil {
 			lc.logger.WithError(err).Error("数据转发到远程")
 		}

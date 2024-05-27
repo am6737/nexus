@@ -102,7 +102,7 @@ func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet,
 		WithField("addr", rAddr).
 		WithField("type", h.MessageType).
 		WithField("subtype", h.MessageSubtype).
-		Debug("处理握手请求")
+		Debug("Handle handshake requests")
 
 	hc.mainHostMap.AddHost(pk.RemoteIP, rAddr)
 
@@ -270,7 +270,7 @@ func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
 			WithField("lightHouse", lightHouse.VpnIp).
 			WithField("addr", lightHouse.Remote).
 			WithField("localIndex", hc.localIndexID).
-			Debug("发送灯塔同步握手数据包")
+			Debug("Send Lighthouse sync handshake packet")
 		if err := hc.Handshake(lightHouse.VpnIp, p); err != nil {
 			hc.logger.Errorf("Error initiating handshake for %s: %v", lightHouse.VpnIp, err)
 		}
@@ -368,7 +368,7 @@ func (hc *HandshakeController) handleOutbound(hr HandshakeRequest, lighthouseTri
 			WithField("vpnIP", hr.VIP).
 			WithField("addr", remoteAddr).
 			WithField("localIndex", hc.localIndexID).
-			Info("发送握手数据包")
+			Info("Send handshake packet")
 		if err := hc.ow.WriteToAddr(hr.Packet, remoteAddr); err != nil {
 			hc.logger.Errorf("failed to send handshake packet to %s: %v", remoteAddr, err)
 			continue
