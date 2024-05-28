@@ -12,7 +12,6 @@ import (
 	"github.com/am6737/nexus/utils"
 	"github.com/sirupsen/logrus"
 	"io"
-	"net"
 	"os"
 	"runtime"
 	"sync/atomic"
@@ -97,33 +96,6 @@ func (ic *OutboundController) consumeInsidePacket(data []byte, packet *packet.Pa
 		ic.logger.WithError(err).Error("Error while forwarding outbound packet")
 		return
 	}
-}
-
-func (ic *OutboundController) checkRules(p *packet.Packet) string {
-	// Implement the logic to check the rules and return the appropriate action
-	for _, rule := range ic.cfg.Inbound {
-		//fmt.Println("rule.Proto => ", rule.Proto)
-		//fmt.Println("packet.TypeName(p.Protocol)  => ", packet.TypeName(p.Protocol))
-		//fmt.Println("rule.Port.ToUint16() => ", rule.Port.ToUint16())
-		//fmt.Println("p.RemotePort => ", p.RemotePort)
-		if (rule.Proto == packet.TypeName(p.Protocol) || rule.Proto == "any") && rule.Port.ToUint16() == p.RemotePort {
-			if len(rule.Host) == 0 {
-				return rule.Action
-			}
-			for _, host := range rule.Host {
-				_, network, err := net.ParseCIDR(host)
-				if err == nil {
-					if network.Contains(p.RemoteIP.ToNetIP()) {
-						return rule.Action
-					}
-				} else if host == p.RemoteIP.String() {
-					return rule.Action
-				}
-			}
-		}
-	}
-	// Default to deny if no matching rule is found
-	return "deny"
 }
 
 func (ic *OutboundController) Close() error {

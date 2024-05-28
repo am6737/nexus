@@ -178,7 +178,7 @@ func GenerateConfigTemplate() Config {
 		Listen:        defaultListen,
 		Tun:           defaultTun,
 		Handshake:     defaultHandshake,
-		Outbound:      defaultOutbound,
-		Inbound:       defaultInbound,
+		//Outbound:      defaultOutbound,
+		//Inbound:       defaultInbound,
 	}
 }
