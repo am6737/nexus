@@ -44,6 +44,10 @@ func enroll(c *cli.Context) error {
 		return fmt.Errorf("could not parse response: %v", err)
 	}
 
+	if enrollResponse.Code != http.StatusOK {
+		return fmt.Errorf("enrollment failed: %s", enrollResponse.Msg)
+	}
+
 	fmt.Println("enrollResponse.Data.Config => ", enrollResponse.Data.Config)
 
 	var yamlData config.Config
