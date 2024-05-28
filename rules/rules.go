@@ -53,7 +53,7 @@ func (r *Rules) Outbound(p *packet.Packet) error {
 			continue // Protocol doesn't match
 		}
 
-		if rule.Port != AnyPort && !matchPort(int(p.RemotePort), rule.Port) {
+		if rule.Port != "any" && rule.Port != AnyPort && !matchPort(int(p.RemotePort), rule.Port) {
 			continue // Port doesn't match
 		}
 
@@ -95,7 +95,7 @@ func (r *Rules) Inbound(p *packet.Packet) error {
 			continue // Protocol doesn't match
 		}
 
-		if rule.Port != AnyPort && !matchPort(int(p.RemotePort), rule.Port) {
+		if rule.Port != "any" && rule.Port != AnyPort && !matchPort(int(p.RemotePort), rule.Port) {
 			continue // Port doesn't match
 		}
 
