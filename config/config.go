@@ -15,7 +15,6 @@ type Config struct {
 	Handshake     HandshakeConfig     `yaml:"handshake"`
 	Outbound      []OutboundRule      `yaml:"outbound"`
 	Inbound       []InboundRule       `yaml:"inbound"`
-	Persistence   Persistence         `yaml:"persistence"`
 }
 
 type LighthouseConfig struct {
@@ -78,13 +77,6 @@ type InboundRule struct {
 	Action string `yaml:"action"`
 }
 
-type Persistence struct {
-	Enabled bool   `yaml:"enabled"`
-	Url     string `yaml:"url"`
-	Type    string `yaml:"type"`
-	DB      string `yaml:"db"`
-}
-
 func (r OutboundRule) String() string {
 	return fmt.Sprintf("port=%v proto=%s hosts=%v action=%s", r.Port, r.Proto, r.Host, r.Action)
 }
@@ -135,13 +127,6 @@ var (
 		DropMulticast:      false,
 		TxQueue:            500,
 		MTU:                1300,
-	}
-
-	defaultPersistence = Persistence{
-		Enabled: false,
-		Url:     "",
-		Type:    "",
-		DB:      "",
 	}
 
 	defaultLighthouse = LighthouseConfig{
