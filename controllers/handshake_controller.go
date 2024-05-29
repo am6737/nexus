@@ -237,7 +237,10 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 // handshakeAllHosts 对所有主机进行握手
 func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 	for vip, host := range hc.mainHostMap.GetAllHostMap() {
-		if vip == hc.localVIP || hc.lightHouses[vip] != nil || hc.lighthouse.IsLighthouse() {
+		//if vip == hc.localVIP || hc.lightHouses[vip] != nil || hc.lighthouse.IsLighthouse() {
+		//	continue
+		//}
+		if vip == hc.localVIP {
 			continue
 		}
 		handshakePacket, err := hc.buildHandshakeHostRequestPacket(vip)
@@ -258,31 +261,25 @@ func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 }
 
 func (hc *HandshakeController) syncLighthouse(ctx context.Context) {
-	for _, lightHouse := range hc.lightHouses {
-		if lightHouse.VpnIp == hc.localVIP {
-			hc.logger.Warn("Lighthouse is localhost")
-			continue
-		}
-		p, err := hc.buildLightHouseAndHostSyncPacket(lightHouse.VpnIp)
-		if err != nil {
-			hc.logger.WithError(err).Error("Failed to build handshake and host sync packet")
-			continue
-		}
-		hc.logger.
-			WithField("lightHouse", lightHouse.VpnIp).
-			WithField("addr", lightHouse.Remote).
-			WithField("localIndex", hc.localIndexID).
-			Debug("Send Lighthouse sync handshake packet")
-		if err := hc.Handshake(lightHouse.VpnIp, p); err != nil {
-			hc.logger.Errorf("Error initiating handshake for %s: %v", lightHouse.VpnIp, err)
-		}
-		//hc.logger.
-		//	WithField("lighthouse", lightHouse.VpnIP).
-		//	Info("发送灯塔同步请求")
-		//if err := hc.ow.WriteTo(p, lightHouse.Remote); err != nil {
-		//	hc.logger.WithError(err).Error("Failed to send handshake packet to lighthouse")
-		//}
-	}
+	//for _, lightHouse := range hc.lightHouses {
+	//	if lightHouse.VpnIp == hc.localVIP {
+	//		hc.logger.Warn("Lighthouse is localhost")
+	//		continue
+	//	}
+	//	p, err := hc.buildLightHouseAndHostSyncPacket(lightHouse.VpnIp)
+	//	if err != nil {
+	//		hc.logger.WithError(err).Error("Failed to build handshake and host sync packet")
+	//		continue
+	//	}
+	//	hc.logger.
+	//		WithField("lightHouse", lightHouse.VpnIp).
+	//		WithField("addr", lightHouse.Remote).
+	//		WithField("localIndex", hc.localIndexID).
+	//		Debug("Send Lighthouse sync handshake packet")
+	//	if err := hc.Handshake(lightHouse.VpnIp, p); err != nil {
+	//		hc.logger.Errorf("Error initiating handshake for %s: %v", lightHouse.VpnIp, err)
+	//	}
+	//}
 }
 
 // Handshake 实现 HandshakeController 接口，启动针对指定 VPN IP 的握手过程
