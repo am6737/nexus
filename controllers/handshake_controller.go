@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
+	"github.com/am6737/nexus/cipher"
 	"github.com/am6737/nexus/config"
 	"github.com/am6737/nexus/host"
 	pmetrics "github.com/am6737/nexus/metrics"
@@ -51,6 +52,9 @@ var _ interfaces.HandshakeController = &HandshakeController{}
 // HandshakeController 实现 HandshakeController 接口的握手控制器
 type HandshakeController struct {
 	sync.RWMutex
+
+	CipherState *cipher.NexusCipherState
+
 	handshakeHostsRwMutex sync.RWMutex
 	localVIP              api.VpnIP
 	handshakeHosts        map[api.VpnIP]*HandshakeHostInfo // 主机信息列表
@@ -75,11 +79,7 @@ type HandshakeRequest struct {
 }
 
 // NewHandshakeController 创建一个新的 HandshakeController 实例
-func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, ow interfaces.OutsideWriter, config config.HandshakeConfig, localVIP api.VpnIP, lightHouses map[api.VpnIP]*host.HostInfo) *HandshakeController {
-	index, err := generateIndex()
-	if err != nil {
-		panic(err)
-	}
+func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, ow interfaces.OutsideWriter, config config.HandshakeConfig, localVIP api.VpnIP, lightHouses map[api.VpnIP]*host.HostInfo, index uint32) *HandshakeController {
 	return &HandshakeController{
 		localVIP:        localVIP,
 		handshakeHosts:  make(map[api.VpnIP]*HandshakeHostInfo),
@@ -539,10 +539,16 @@ func (hc *HandshakeController) buildHandshakePacket(vip api.VpnIP, ms header.Mes
 		return nil, err
 	}
 
+	pk = append(pk, []byte{0, 0, 0, 0}...)
+
+	decrypt, err := hc.CipherState.Decrypt(pk)
+	if err != nil {
+		hc.logger.Errorf("failed to decrypt packet: %v", err)
+		return nil, err
+	}
+
 	var buf bytes.Buffer
 	buf.Write(h)
-	buf.Write(pk)
-	tmp := make([]byte, 4)
-	buf.Write(tmp)
+	buf.Write(decrypt)
 	return buf.Bytes(), nil
 }

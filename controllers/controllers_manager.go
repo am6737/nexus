@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
+	"github.com/am6737/nexus/cipher"
 	"github.com/am6737/nexus/config"
 	"github.com/am6737/nexus/host"
 	"github.com/am6737/nexus/rules"
@@ -29,6 +30,8 @@ type ControllersManager struct {
 	Outbound   interfaces.InboundController
 	lighthouse interfaces.LighthouseController
 	Network    interfaces.NetworkController
+
+	CipherState *cipher.NexusCipherState
 
 	runnables runnables
 }
@@ -100,6 +103,11 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 		}
 	}
 
+	index, err := generateIndex()
+	if err != nil {
+		panic(err)
+	}
+
 	handshakeController := NewHandshakeController(
 		logger.WithField("controller", "Handshake").Logger,
 		hosts,
@@ -108,6 +116,7 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 		config.Handshake,
 		localVpnIP,
 		lighthouses,
+		index,
 	)
 
 	lighthouseController := NewLighthouseController(
@@ -130,6 +139,11 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 		},
 	}
 
+	key := cipher.GenerateRandomKey(12)
+	xk := string(key)
+
+	cipherState, err := cipher.NewNexusCipherState(xk, xk, xk)
+
 	// Initialize controllers manager
 	controllersManager := &ControllersManager{
 		logger:         logger,
@@ -139,6 +153,7 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 		Inbound:        inboundController,
 		Outbound:       outboundController,
 		runnables:      rs,
+		CipherState:    cipherState,
 	}
 
 	return controllersManager

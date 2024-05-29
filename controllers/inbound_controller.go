@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
+	"github.com/am6737/nexus/cipher"
 	"github.com/am6737/nexus/config"
 	"github.com/am6737/nexus/host"
 	"github.com/am6737/nexus/transport/packet"
@@ -22,6 +23,8 @@ var _ interfaces.InboundController = &InboundControllers{}
 
 // InboundControllers 入站控制器 必须实现 interfaces.InboundController 接口
 type InboundControllers struct {
+	CipherState *cipher.NexusCipherState
+
 	outside     udp.Conn
 	hosts       *host.HostMap
 	lighthouses []*host.HostInfo
@@ -211,9 +214,17 @@ func (oc *InboundControllers) handlePacket(addr *udp.Addr, p []byte, h *header.H
 }
 
 func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk *packet.Packet, addr *udp.Addr, internalWriter io.Writer) {
+	out := p
+
+	cleartext, err := oc.CipherState.Decrypt(p[header.Len:])
+	if err != nil {
+		oc.logger.WithError(err).Debug("解密数据包出错")
+		return
+	}
+
 	// 解析数据包
 	// 将incoming参数设置为true
-	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
+	if err := packet.ParsePacket(cleartext[header.Len:], true, pk); err != nil {
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}
@@ -229,7 +240,6 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 		WithField("数据包", pk).
 		Info("入站消息流量")
 
-	out := p
 	p = p[header.Len:]
 
 	if pk.RemoteIP == oc.localVpnIP {
@@ -249,9 +259,15 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 }
 
 func (oc *InboundControllers) handleHandshake(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
+	cleartext, err := oc.CipherState.Decrypt(p[header.Len:])
+	if err != nil {
+		oc.logger.WithError(err).Debug("解密数据包出错")
+		return
+	}
+
 	// 解析数据包
 	// 将incoming参数设置为true
-	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
+	if err := packet.ParsePacket(cleartext[header.Len:], true, pk); err != nil {
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}
@@ -312,9 +328,15 @@ func (oc *InboundControllers) handleLocalVpnAddress(p []byte, pk *packet.Packet,
 
 // 处理目标地址是灯塔的情况
 func (oc *InboundControllers) handleLighthouses(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
+	cleartext, err := oc.CipherState.Decrypt(p[header.Len:])
+	if err != nil {
+		oc.logger.WithError(err).Debug("解密数据包出错")
+		return
+	}
+
 	// 解析数据包
 	// 将incoming参数设置为true
-	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
+	if err := packet.ParsePacket(cleartext[header.Len:], true, pk); err != nil {
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}
@@ -328,9 +350,15 @@ func (oc *InboundControllers) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 }
 
 func (oc *InboundControllers) handleTest(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
+	cleartext, err := oc.CipherState.Decrypt(p[header.Len:])
+	if err != nil {
+		oc.logger.WithError(err).Debug("解密数据包出错")
+		return
+	}
+
 	// 解析数据包
 	// 将incoming参数设置为true
-	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
+	if err := packet.ParsePacket(cleartext[header.Len:], true, pk); err != nil {
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}
