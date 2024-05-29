@@ -229,7 +229,7 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 
 	cleartext, err := oc.CipherState.Decrypt(p[header.Len:])
 	if err != nil {
-		oc.logger.WithError(err).Debug("解密数据包出错")
+		oc.logger.WithError(err).Debug("handleInboundPacket 解密数据包出错")
 		return
 	}
 

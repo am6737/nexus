@@ -7,6 +7,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"os"
+	"path/filepath"
+	"runtime"
+	"strconv"
 )
 
 func run(c *cli.Context) error {
@@ -19,9 +22,16 @@ func run(c *cli.Context) error {
 	logger := logrus.New()
 	logger.Out = os.Stdout
 	logger.SetLevel(logrus.DebugLevel)
+	// 启用调用者报告
+	logger.SetReportCaller(true)
 	logger.SetFormatter(&logrus.TextFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
 		FullTimestamp:   true,
+		CallerPrettyfier: func(frame *runtime.Frame) (function string, file string) {
+			// 获取文件名和行号
+			filename := filepath.Base(frame.File)
+			return "", filename + ":" + strconv.Itoa(frame.Line)
+		},
 	})
 
 	// 创建新的 DarwinTun 实例
