@@ -107,7 +107,7 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIP, udpAddr *udp.Addr, publicKey []byte)
 	hm.logger.WithFields(logrus.Fields{
 		"vpnIP":     vpnIP,
 		"addr":      newAddr,
-		"publicKey": publicKey,
+		"publicKey": string(publicKey),
 	}).Info("Add new host")
 
 	//if host.Remote == nil {

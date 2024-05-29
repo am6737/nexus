@@ -57,6 +57,18 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 
 	rulesEngine := rules.NewRules(config.Outbound, config.Inbound)
 
+	index, err := generateIndex()
+	if err != nil {
+		panic(err)
+	}
+
+	xk := strconv.Itoa(int(index))
+
+	cipherState, err := cipher.NewNexusCipherState(xk, xk, xk)
+	if err != nil {
+		panic(err)
+	}
+
 	// Initialize inbound controller
 	inboundLogger := logger.WithField("controller", "Inbound")
 	inboundController := &OutboundController{
@@ -71,12 +83,13 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 	// Initialize outbound controller
 	outboundLogger := logger.WithField("controller", "Outbound")
 	outboundController := &InboundControllers{
-		localVpnIP: localVpnIP,
-		logger:     outboundLogger.Logger,
-		cfg:        config,
-		hosts:      hosts,
-		outside:    udpServer,
-		rules:      rulesEngine,
+		localVpnIP:  localVpnIP,
+		logger:      outboundLogger.Logger,
+		cfg:         config,
+		hosts:       hosts,
+		outside:     udpServer,
+		rules:       rulesEngine,
+		CipherState: cipherState,
 	}
 
 	lighthouses := map[api.VpnIP]*host.HostInfo{}
@@ -102,18 +115,6 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 			}
 			hosts.AddHost(vpnIp, r, nil)
 		}
-	}
-
-	index, err := generateIndex()
-	if err != nil {
-		panic(err)
-	}
-
-	xk := strconv.Itoa(int(index))
-
-	cipherState, err := cipher.NewNexusCipherState(xk, xk, xk)
-	if err != nil {
-		panic(err)
 	}
 
 	handshakeController := NewHandshakeController(
