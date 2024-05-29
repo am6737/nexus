@@ -79,7 +79,7 @@ type HandshakeRequest struct {
 }
 
 // NewHandshakeController 创建一个新的 HandshakeController 实例
-func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, ow interfaces.OutsideWriter, config config.HandshakeConfig, localVIP api.VpnIP, lightHouses map[api.VpnIP]*host.HostInfo, index uint32) *HandshakeController {
+func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, lightHouse *struct{}, ow interfaces.OutsideWriter, config config.HandshakeConfig, localVIP api.VpnIP, lightHouses map[api.VpnIP]*host.HostInfo, index uint32, CipherState *cipher.NexusCipherState) *HandshakeController {
 	return &HandshakeController{
 		localVIP:        localVIP,
 		handshakeHosts:  make(map[api.VpnIP]*HandshakeHostInfo),
@@ -93,6 +93,7 @@ func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, li
 		lightHouses:     lightHouses,
 		ow:              ow,
 		localIndexID:    index,
+		CipherState:     CipherState,
 	}
 }
 
@@ -102,6 +103,7 @@ func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet,
 		WithField("addr", rAddr).
 		WithField("type", h.MessageType).
 		WithField("subtype", h.MessageSubtype).
+		WithField("publicKey", p[header.Len+packet.Len:]).
 		Debug("Handle handshake requests")
 
 	hc.mainHostMap.AddHost(pk.RemoteIP, rAddr)
@@ -521,11 +523,13 @@ func (hc *HandshakeController) buildLightHouseAndHostSyncPacket(vip api.VpnIP) (
 		return nil, err
 	}
 
+	publicKey := hc.CipherState.PublicKey()
+
 	var buf bytes.Buffer
 	buf.Write(h)
 	buf.Write(pk)
-	tmp := make([]byte, 4)
-	buf.Write(tmp)
+	//tmp := make([]byte, 4)
+	buf.Write([]byte(publicKey))
 	return buf.Bytes(), nil
 }
 
@@ -539,16 +543,14 @@ func (hc *HandshakeController) buildHandshakePacket(vip api.VpnIP, ms header.Mes
 		return nil, err
 	}
 
-	pk = append(pk, []byte{0, 0, 0, 0}...)
-
-	decrypt, err := hc.CipherState.Decrypt(pk)
-	if err != nil {
-		hc.logger.Errorf("failed to decrypt packet: %v", err)
-		return nil, err
-	}
+	publicKey := hc.CipherState.PublicKey()
 
 	var buf bytes.Buffer
 	buf.Write(h)
-	buf.Write(decrypt)
+	buf.Write(pk)
+
+	fmt.Println("buf => ", buf.Len())
+
+	buf.Write([]byte(publicKey))
 	return buf.Bytes(), nil
 }

@@ -108,6 +108,14 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 		panic(err)
 	}
 
+	key := cipher.GenerateRandomKey(12)
+	xk := string(key)
+
+	cipherState, err := cipher.NewNexusCipherState(xk, xk, xk)
+	if err != nil {
+		panic(err)
+	}
+
 	handshakeController := NewHandshakeController(
 		logger.WithField("controller", "Handshake").Logger,
 		hosts,
@@ -117,6 +125,7 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 		localVpnIP,
 		lighthouses,
 		index,
+		cipherState,
 	)
 
 	lighthouseController := NewLighthouseController(
@@ -138,11 +147,6 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 			lighthouseController,
 		},
 	}
-
-	key := cipher.GenerateRandomKey(12)
-	xk := string(key)
-
-	cipherState, err := cipher.NewNexusCipherState(xk, xk, xk)
 
 	// Initialize controllers manager
 	controllersManager := &ControllersManager{

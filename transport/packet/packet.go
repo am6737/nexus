@@ -12,6 +12,10 @@ import (
 type m map[string]interface{}
 
 const (
+	Len = 20
+)
+
+const (
 	ProtoAny  = 0 // When we want to handle HOPOPT (0) we can change this, if ever
 	ProtoTCP  = 6
 	ProtoUDP  = 17
@@ -173,7 +177,7 @@ func (p *Packet) Encode() []byte {
 	// 176-207 bits: Options (if any)
 
 	// 创建一个 IPv4 头部
-	ipHeader := make([]byte, 20)
+	ipHeader := make([]byte, Len)
 	// 版本号和头部长度（20 字节）
 	ipHeader[0] = 0x45
 	binary.BigEndian.PutUint16(ipHeader[2:4], 20) // Total Length
@@ -259,7 +263,7 @@ func (p *Packet) Decode(data []byte, incoming bool) error {
 // BuildIPv4Packet 构建一个符合 ParsePacket 函数逻辑的 IPv4 数据包
 func BuildIPv4Packet(srcIP, dstIP net.IP, protocol uint8, isFragment bool) ([]byte, error) {
 	// 创建一个 IPv4 头部
-	ipHeader := make([]byte, 20)
+	ipHeader := make([]byte, Len)
 
 	// 版本号和头部长度（20 字节）
 	ipHeader[0] = 0x45
