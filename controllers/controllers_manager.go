@@ -16,6 +16,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 )
 
@@ -108,8 +109,7 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 		panic(err)
 	}
 
-	key := cipher.GenerateRandomKey(12)
-	xk := string(key)
+	xk := strconv.Itoa(int(index))
 
 	cipherState, err := cipher.NewNexusCipherState(xk, xk, xk)
 	if err != nil {
