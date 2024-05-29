@@ -92,6 +92,12 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIP, udpAddr *udp.Addr, publicKey []byte)
 
 	newAddr := udpAddr.Copy()
 
+	hm.logger.WithFields(logrus.Fields{
+		"vpnIP":     vpnIP,
+		"addr":      newAddr,
+		"publicKey": string(publicKey),
+	}).Info("Add new host")
+
 	host, ok := hm.hosts[vpnIP]
 	if !ok {
 		hm.hosts[vpnIP] = &HostInfo{
@@ -103,12 +109,6 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIP, udpAddr *udp.Addr, publicKey []byte)
 	}
 	host.Remote = udpAddr
 	host.PublicKey = publicKey
-
-	hm.logger.WithFields(logrus.Fields{
-		"vpnIP":     vpnIP,
-		"addr":      newAddr,
-		"publicKey": string(publicKey),
-	}).Info("Add new host")
 
 	//if host.Remote == nil {
 	//	host.Remote = newAddr
