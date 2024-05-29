@@ -86,7 +86,7 @@ func (hm *HostMap) UpdateHost(vip api.VpnIP, udpAddr *udp.Addr) {
 	}
 }
 
-func (hm *HostMap) AddHost(vpnIP api.VpnIP, udpAddr *udp.Addr) {
+func (hm *HostMap) AddHost(vpnIP api.VpnIP, udpAddr *udp.Addr, publicKey []byte) {
 	hm.Lock()
 	defer hm.Unlock()
 
@@ -99,8 +99,9 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIP, udpAddr *udp.Addr) {
 			"addr":  newAddr,
 		}).Info("Add new host")
 		hm.hosts[vpnIP] = &HostInfo{
-			Remote: newAddr,
-			VpnIp:  vpnIP,
+			Remote:    newAddr,
+			VpnIp:     vpnIP,
+			PublicKey: publicKey,
 		}
 		return
 	}
@@ -122,6 +123,14 @@ func (hm *HostMap) AddHost(vpnIP api.VpnIP, udpAddr *udp.Addr) {
 func (hm *HostMap) QueryVpnIp(vpnIp api.VpnIP) *HostInfo {
 	//return hm.queryVpnIp(vpnIp, nil)
 	return hm.queryVpnIp(vpnIp)
+}
+
+func (hm *HostMap) GetVpnIpPublicKey(vpnIp api.VpnIP) ([]byte, error) {
+	h := hm.queryVpnIp(vpnIp)
+	if h == nil || h.PublicKey == nil {
+		return nil, fmt.Errorf("host not found")
+	}
+	return h.PublicKey, nil
 }
 
 func (hm *HostMap) queryVpnIp(vpnIp api.VpnIP) *HostInfo {
@@ -177,6 +186,7 @@ func (h *HostInfo) GetRemoteAddrList() []*udp.Addr {
 }
 
 type HostInfo struct {
+	PublicKey     []byte
 	Remote        *udp.Addr
 	Remotes       RemoteList
 	RemoteIndexId uint32

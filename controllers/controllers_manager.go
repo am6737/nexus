@@ -99,7 +99,7 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 				Remote: r,
 				VpnIp:  vpnIp,
 			}
-			hosts.AddHost(vpnIp, r)
+			hosts.AddHost(vpnIp, r, nil)
 		}
 	}
 

@@ -66,8 +66,19 @@ func (oc *InboundControllers) WriteToVIP(p []byte, vip api.VpnIP) error {
 
 	tp := p
 
+	key, err := oc.hosts.GetVpnIpPublicKey(vip)
+	if err != nil {
+		oc.logger.WithField("vip", vip).Error("获取公钥失败")
+		return err
+	}
+
+	ciphertext, err := oc.CipherState.Encrypt(p, string(key))
+	if err != nil {
+		return err
+	}
+
 	// 创建新的数据包，将头部和数据包拼接
-	p = append(messagePacket, p...)
+	p = append(messagePacket, ciphertext...)
 
 	host := oc.hosts.QueryVpnIp(vip)
 	if host == nil {
@@ -163,7 +174,7 @@ func (oc *InboundControllers) configureStaticHostMap() {
 		oc.hosts.AddHost(vpnIp, &udp.Addr{
 			IP:   udpAddr.IP,
 			Port: uint16(udpAddr.Port),
-		})
+		}, nil)
 	}
 }
 

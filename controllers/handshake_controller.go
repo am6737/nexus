@@ -98,15 +98,17 @@ func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, li
 }
 
 func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
+	publicKey := p[header.Len+packet.Len:]
+
 	hc.logger.
 		WithField("vpnIP", pk.RemoteIP).
 		WithField("addr", rAddr).
 		WithField("type", h.MessageType).
 		WithField("subtype", h.MessageSubtype).
-		WithField("publicKey", string(p[header.Len+packet.Len:])).
+		WithField("publicKey", string(publicKey)).
 		Debug("Handle handshake requests")
 
-	hc.mainHostMap.AddHost(pk.RemoteIP, rAddr)
+	hc.mainHostMap.AddHost(pk.RemoteIP, rAddr, publicKey)
 
 	switch h.MessageSubtype {
 	case header.HostHandshakeRequest:
