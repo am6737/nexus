@@ -258,7 +258,6 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 		WithField("源地址", pk.LocalIP).
 		WithField("目标地址", pk.RemoteIP).
 		WithField("数据包", pk).
-		WithField("数据", cleartext).
 		Info("入站消息流量")
 
 	p = p[header.Len:]
