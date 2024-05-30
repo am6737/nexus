@@ -74,7 +74,7 @@ func (oc *InboundControllers) WriteToVIP(p []byte, vip api.VpnIP) error {
 		return err
 	}
 
-	ciphertext, err := oc.CipherState.Encrypt(p, string(key))
+	ciphertext, err := oc.CipherState.Encrypt(p, key)
 	if err != nil {
 		return err
 	}
