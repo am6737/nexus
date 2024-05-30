@@ -350,15 +350,15 @@ func (oc *InboundControllers) handleLocalVpnAddress(p []byte, pk *packet.Packet,
 
 // 处理目标地址是灯塔的情况
 func (oc *InboundControllers) handleLighthouses(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
-	cleartext, err := oc.CipherState.Decrypt(p[header.Len:])
-	if err != nil {
-		oc.logger.WithError(err).Debug("解密数据包出错")
-		return
-	}
+	//cleartext, err := oc.CipherState.Decrypt(p[header.Len:])
+	//if err != nil {
+	//	oc.logger.WithError(err).Debug("解密数据包出错")
+	//	return
+	//}
 
 	// 解析数据包
 	// 将incoming参数设置为true
-	if err := packet.ParsePacket(cleartext[header.Len:], true, pk); err != nil {
+	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}

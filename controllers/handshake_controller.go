@@ -527,7 +527,6 @@ func (hc *HandshakeController) buildLightHouseAndHostSyncPacket(vip api.VpnIP) (
 	var buf bytes.Buffer
 	buf.Write(h)
 	buf.Write(pk)
-	//tmp := make([]byte, 4)
 	buf.Write([]byte(publicKey))
 	return buf.Bytes(), nil
 }
