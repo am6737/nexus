@@ -239,12 +239,12 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 // handshakeAllHosts 对所有主机进行握手
 func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 	for vip, host := range hc.mainHostMap.GetAllHostMap() {
-		if vip == hc.localVIP || hc.lightHouses[vip] != nil || hc.lighthouse.IsLighthouse() {
-			continue
-		}
-		//if vip == hc.localVIP {
+		//if vip == hc.localVIP || hc.lightHouses[vip] != nil || hc.lighthouse.IsLighthouse() {
 		//	continue
 		//}
+		if vip == hc.localVIP {
+			continue
+		}
 		handshakePacket, err := hc.buildHandshakeHostRequestPacket(vip)
 		if err != nil {
 			hc.logger.WithError(err).Error("Failed to build handshake host reply packet")
