@@ -110,6 +110,10 @@ func (s *NexusCipherState) Decrypt(ciphertext []byte) ([]byte, error) {
 	//fmt.Println("h2解密使用的nonce => ", decryptedNonce)
 	//fmt.Println("h2需要解密的密文 => ", []byte(sm.Message))
 
+	if len(decryptedNonce) != chacha20poly1305.NonceSize {
+		return nil, fmt.Errorf("nonce 长度错误")
+	}
+
 	// 使用解密后的 nonce 解密数据
 	decrypted, err := s.c.Decrypt(sm.Message, nil, decryptedNonce)
 	if err != nil {
