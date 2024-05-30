@@ -64,8 +64,6 @@ func (oc *InboundControllers) WriteToVIP(p []byte, vip api.VpnIP) error {
 		return err
 	}
 
-	fmt.Println("p => ", p)
-
 	tp := p
 
 	key, err := oc.hosts.GetVpnIpPublicKey(vip)
@@ -235,7 +233,8 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 		return
 	}
 
-	fmt.Println("cleartext => ", cleartext)
+	fmt.Println("解密前数据 => ", p[header.Len:])
+	fmt.Println("解密后数据 => ", cleartext)
 
 	// 解析数据包
 	// 将incoming参数设置为true
