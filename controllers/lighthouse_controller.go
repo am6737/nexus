@@ -263,7 +263,6 @@ func (lc *LighthouseController) handleHostSync(addr *udp.Addr, pk *packet.Packet
 		WithField("remoteIP", pk.RemoteIP).
 		WithField("addr", addr).
 		WithField("pk", pk).
-		WithField("replyPacket", replyPacket).
 		Info("发送主机同步回复数据包")
 	if err := lc.ow.WriteToAddr(replyPacket, addr); err != nil {
 		lc.logger.WithError(err).Error("数据转发到远程")
