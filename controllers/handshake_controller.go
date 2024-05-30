@@ -543,8 +543,6 @@ func (hc *HandshakeController) buildHandshakePacket(vip api.VpnIP, ms header.Mes
 
 	publicKey := hc.CipherState.PublicKey()
 
-	fmt.Println("自己的公钥 => ", publicKey)
-
 	var buf bytes.Buffer
 	buf.Write(h)
 	buf.Write(pk)

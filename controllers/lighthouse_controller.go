@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
+	"github.com/am6737/nexus/cipher"
 	"github.com/am6737/nexus/host"
 	"github.com/am6737/nexus/transport/packet"
 	"github.com/am6737/nexus/transport/protocol/udp"
@@ -24,7 +25,7 @@ var (
 
 var _ interfaces.LighthouseController = &LighthouseController{}
 
-func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow interfaces.OutsideWriter, isLighthouse bool, localVpnIP api.VpnIP) *LighthouseController {
+func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow interfaces.OutsideWriter, isLighthouse bool, localVpnIP api.VpnIP, cipherState *cipher.NexusCipherState) *LighthouseController {
 	return &LighthouseController{
 		logger:       logger,
 		host:         host,
@@ -34,10 +35,13 @@ func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow inter
 		//handshakeHosts:       make(map[api.VpnIP]*host.HostInfo),
 		queryQueue:  make(chan api.VpnIP, 1000),
 		queryWorker: &sync.WaitGroup{},
+		CipherState: cipherState,
 	}
 }
 
 type LighthouseController struct {
+	CipherState *cipher.NexusCipherState
+
 	mu   sync.RWMutex
 	host *host.HostMap
 	//handshakeHosts       map[api.VpnIP]*host.HostInfo
@@ -319,9 +323,6 @@ func (lc *LighthouseController) buildHandshakeHostSyncReplyPacket(vip api.VpnIP,
 	var buf bytes.Buffer
 	buf.Write(handshakePacket)
 	buf.Write(pv4Packet)
-	//if len(data) < 4 {
-	//	data = make([]byte, 4)
-	//}
 	buf.Write(data)
 	return buf.Bytes(), nil
 }
@@ -336,10 +337,13 @@ func (lc *LighthouseController) buildHandshakePacket(vip api.VpnIP, ms header.Me
 		return nil, err
 	}
 
+	publicKey := lc.CipherState.PublicKey()
+
 	var buf bytes.Buffer
 	buf.Write(h)
 	buf.Write(pk)
-	tmp := make([]byte, 4)
-	buf.Write(tmp)
+	buf.Write([]byte(publicKey))
+	//tmp := make([]byte, 4)
+	//buf.Write(tmp)
 	return buf.Bytes(), nil
 }
