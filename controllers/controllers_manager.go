@@ -135,6 +135,7 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 		outboundController,
 		config.Lighthouse.Enabled,
 		localVpnIP,
+		cipherState,
 	)
 	outboundController.handshake = handshakeController
 	outboundController.lighthouse = lighthouseController
