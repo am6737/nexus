@@ -7,7 +7,6 @@ import (
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/ProtonMail/gopenpgp/v2/helper"
 	"golang.org/x/crypto/chacha20poly1305"
-	"os"
 	"strings"
 )
 
@@ -78,8 +77,7 @@ func (s *NexusCipherState) Encrypt(plaintext []byte, publicKey string) ([]byte, 
 	// 使用对方的公钥加密 nonce
 	armoredNonce, err := helper.EncryptMessageArmored(publicKey, string(nonce))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "无法加密 nonce: %v", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("无法加密 nonce: %v", err)
 	}
 
 	sm := SecretMessage{

@@ -64,6 +64,8 @@ func (oc *InboundControllers) WriteToVIP(p []byte, vip api.VpnIP) error {
 		return err
 	}
 
+	fmt.Println("p => ", p)
+
 	tp := p
 
 	key, err := oc.hosts.GetVpnIpPublicKey(vip)
@@ -233,9 +235,11 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 		return
 	}
 
+	fmt.Println("cleartext => ", cleartext)
+
 	// 解析数据包
 	// 将incoming参数设置为true
-	if err := packet.ParsePacket(cleartext[header.Len:], true, pk); err != nil {
+	if err := packet.ParsePacket(cleartext, false, pk); err != nil {
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}
@@ -249,20 +253,22 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 		WithField("源地址", pk.LocalIP).
 		WithField("目标地址", pk.RemoteIP).
 		WithField("数据包", pk).
+		WithField("数据", cleartext).
 		Info("入站消息流量")
 
 	p = p[header.Len:]
 
 	if pk.RemoteIP == oc.localVpnIP {
-		replaceAddresses(p, pk.LocalIP, pk.RemoteIP)
-		oc.handleLocalVpnAddress(p, pk, internalWriter)
+		replaceAddresses(cleartext, pk.LocalIP, pk.RemoteIP)
+		oc.handleLocalVpnAddress(cleartext, pk, internalWriter)
 		return
 	}
 
 	if oc.localVpnIP == pk.LocalIP {
 		if pk.Protocol != packet.ProtoICMP {
-			oc.handleLocalVpnAddress(p, pk, internalWriter)
+			oc.handleLocalVpnAddress(cleartext, pk, internalWriter)
 		}
+		fmt.Println("out => ", out)
 		if err := oc.outside.WriteTo(out, addr); err != nil {
 			oc.logger.WithError(err).WithField("addr", addr).Error("数据转发到远程")
 		}
