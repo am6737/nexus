@@ -233,8 +233,13 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 		return
 	}
 
-	fmt.Println("解密前数据 => ", p[header.Len:])
-	fmt.Println("解密后数据 => ", cleartext)
+	//oc.logger.WithFields(logrus.Fields{
+	//	"addr":       addr,
+	//	"local_ip":   pk.LocalIP,
+	//	"remote_ip":  pk.RemoteIP,
+	//	"ciphertext": string(p[header.Len:]),
+	//	"cleartext":  cleartext,
+	//}).Info("handleInboundPacket")
 
 	// 解析数据包
 	// 将incoming参数设置为true

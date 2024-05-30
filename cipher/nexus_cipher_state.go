@@ -74,9 +74,6 @@ func (s *NexusCipherState) Encrypt(plaintext []byte, publicKey string) ([]byte, 
 		return nil, err
 	}
 
-	fmt.Println("publicKey => ", publicKey)
-	fmt.Println("nonce => ", nonce)
-
 	// 使用对方的公钥加密 nonce
 	armoredNonce, err := helper.EncryptMessageArmored(publicKey, string(nonce))
 	if err != nil {

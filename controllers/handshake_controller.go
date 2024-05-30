@@ -105,7 +105,7 @@ func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet,
 		WithField("addr", rAddr).
 		WithField("type", h.MessageType).
 		WithField("subtype", h.MessageSubtype).
-		WithField("publicKey", string(publicKey)).
+		//WithField("publicKey", string(publicKey)).
 		Debug("Handle handshake requests")
 
 	hc.mainHostMap.AddHost(pk.RemoteIP, rAddr, publicKey)
@@ -544,14 +544,9 @@ func (hc *HandshakeController) buildHandshakePacket(vip api.VpnIP, ms header.Mes
 
 	publicKey := hc.CipherState.PublicKey()
 
-	fmt.Println("自己的公钥 => ", publicKey)
-
 	var buf bytes.Buffer
 	buf.Write(h)
 	buf.Write(pk)
-
-	fmt.Println("buf => ", buf.Len())
-
 	buf.Write([]byte(publicKey))
 	return buf.Bytes(), nil
 }
