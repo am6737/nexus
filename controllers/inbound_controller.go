@@ -218,6 +218,7 @@ func (oc *InboundControllers) handlePacket(addr *udp.Addr, p []byte, h *header.H
 	case header.Message:
 		oc.handleInboundPacket(h, p, pk, addr, internalWriter)
 	case header.LightHouse:
+		fmt.Println("header.LightHouse")
 		oc.handleLighthouses(addr, pk, h, p)
 	default:
 

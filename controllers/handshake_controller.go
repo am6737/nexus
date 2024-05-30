@@ -105,7 +105,7 @@ func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet,
 		WithField("addr", rAddr).
 		WithField("type", h.MessageType).
 		WithField("subtype", h.MessageSubtype).
-		WithField("publicKey", string(publicKey)).
+		//WithField("publicKey", string(publicKey)).
 		Debug("Handle handshake requests")
 
 	hc.mainHostMap.AddHost(pk.RemoteIP, rAddr, publicKey)
@@ -311,6 +311,7 @@ func (hc *HandshakeController) Handshake(vip api.VpnIP, packet []byte) error {
 			Debugf("Handshake for %s already complete, skipping", vip)
 
 		if hh.Ready && time.Since(hh.LastCompleteTime) < hc.config.HandshakeHost {
+			fmt.Println("sfjbsjfb")
 			return nil
 		}
 
