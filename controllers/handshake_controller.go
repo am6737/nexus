@@ -105,7 +105,7 @@ func (hc *HandshakeController) HandleRequest(rAddr *udp.Addr, pk *packet.Packet,
 		WithField("addr", rAddr).
 		WithField("type", h.MessageType).
 		WithField("subtype", h.MessageSubtype).
-		//WithField("publicKey", string(publicKey)).
+		WithField("publicKey", string(publicKey)).
 		Debug("Handle handshake requests")
 
 	hc.mainHostMap.AddHost(pk.RemoteIP, rAddr, publicKey)
@@ -239,12 +239,12 @@ func (hc *HandshakeController) Start(ctx context.Context) error {
 // handshakeAllHosts 对所有主机进行握手
 func (hc *HandshakeController) handshakeAllHosts(ctx context.Context) {
 	for vip, host := range hc.mainHostMap.GetAllHostMap() {
-		//if vip == hc.localVIP || hc.lightHouses[vip] != nil || hc.lighthouse.IsLighthouse() {
-		//	continue
-		//}
-		if vip == hc.localVIP {
+		if vip == hc.localVIP || hc.lightHouses[vip] != nil || hc.lighthouse.IsLighthouse() {
 			continue
 		}
+		//if vip == hc.localVIP {
+		//	continue
+		//}
 		handshakePacket, err := hc.buildHandshakeHostRequestPacket(vip)
 		if err != nil {
 			hc.logger.WithError(err).Error("Failed to build handshake host reply packet")
@@ -542,6 +542,8 @@ func (hc *HandshakeController) buildHandshakePacket(vip api.VpnIP, ms header.Mes
 	}
 
 	publicKey := hc.CipherState.PublicKey()
+
+	fmt.Println("自己的公钥 => ", publicKey)
 
 	var buf bytes.Buffer
 	buf.Write(h)
