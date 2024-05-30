@@ -130,7 +130,7 @@ var (
 	}
 
 	defaultLighthouse = LighthouseConfig{
-		Enabled:        true,
+		Enabled:        false,
 		Interval:       60,
 		Hosts:          nil,
 		LocalAllowList: LocalAllowList{Interfaces: make(map[string]bool)},

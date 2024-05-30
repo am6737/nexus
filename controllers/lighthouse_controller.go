@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
 	"github.com/am6737/nexus/cipher"
@@ -250,6 +251,9 @@ func (lc *LighthouseController) handleHostSync(addr *udp.Addr, pk *packet.Packet
 		return
 	}
 	hp, _ := json.Marshal(lc.host.GetAllHostMap())
+
+	fmt.Println("灯塔节点的主机列表 => ", hp)
+
 	replyPacket, err := lc.buildHandshakeHostSyncReplyPacket(pk.RemoteIP, hp)
 	if err != nil {
 		lc.logger.WithError(err).Error("构建握手数据包出错")
