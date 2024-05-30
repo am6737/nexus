@@ -35,7 +35,7 @@ func (s *NexusCipherState) Passphrase() string {
 
 type SecretMessage struct {
 	Message []byte `json:"message"`
-	Secret  []byte `json:"secret"`
+	Secret  string `json:"secret"`
 }
 
 // KeyPair 结构表示一个公钥和私钥对
@@ -74,6 +74,9 @@ func (s *NexusCipherState) Encrypt(plaintext []byte, publicKey string) ([]byte, 
 		return nil, err
 	}
 
+	fmt.Println("publicKey => ", publicKey)
+	fmt.Println("nonce => ", nonce)
+
 	// 使用对方的公钥加密 nonce
 	armoredNonce, err := helper.EncryptMessageArmored(publicKey, string(nonce))
 	if err != nil {
@@ -82,7 +85,7 @@ func (s *NexusCipherState) Encrypt(plaintext []byte, publicKey string) ([]byte, 
 
 	sm := SecretMessage{
 		Message: ciphertext,
-		Secret:  []byte(armoredNonce),
+		Secret:  armoredNonce,
 	}
 
 	jsonData, err := json.Marshal(sm)
@@ -102,7 +105,7 @@ func (s *NexusCipherState) Decrypt(ciphertext []byte) ([]byte, error) {
 	}
 
 	// 使用自己的私钥解密 nonce
-	decryptedNonce, err := helper.DecryptBinaryMessageArmored(s.keyPair.privateKey, []byte(s.keyPair.passphrase), string(sm.Secret))
+	decryptedNonce, err := helper.DecryptBinaryMessageArmored(s.keyPair.privateKey, []byte(s.keyPair.passphrase), sm.Secret)
 	if err != nil {
 		return nil, err
 	}
