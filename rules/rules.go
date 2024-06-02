@@ -70,7 +70,7 @@ func (r *Rules) Outbound(p *packet.Packet) error {
 				}
 			}
 		} else {
-			matched = true
+			matched = false
 		}
 		if !matched {
 			continue // Host doesn't match
@@ -112,7 +112,7 @@ func (r *Rules) Inbound(p *packet.Packet) error {
 				}
 			}
 		} else {
-			matched = true
+			matched = false
 		}
 		if !matched {
 			continue // Host doesn't match

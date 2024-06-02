@@ -60,7 +60,8 @@ func TestParsePortRule(t *testing.T) {
 func TestRules_Outbound(t *testing.T) {
 	rules := NewRules(
 		[]config.OutboundRule{
-			//{Port: "80", Proto: "tcp", Host: []string{"192.168.1.1/24"}, Action: "allow"},
+			{Port: "80", Proto: "tcp", Host: []string{"192.168.1.1/24"}, Action: "allow"},
+			{Port: "80", Proto: "tcp", Host: []string{"0.0.0.0/0"}, Action: "allow"},
 			{Port: "443", Proto: "tcp", Host: []string{"192.168.1.1"}, Action: "deny"},
 		},
 		nil,
@@ -97,6 +98,7 @@ func TestRules_Inbound(t *testing.T) {
 		nil,
 		[]config.InboundRule{
 			{Port: "80", Proto: "tcp", Host: []string{"192.168.1.1/24"}, Action: "allow"},
+			{Port: "80", Proto: "tcp", Host: []string{"0.0.0.0/0"}, Action: "allow"},
 			{Port: "443", Proto: "tcp", Host: []string{"192.168.1.1"}, Action: "deny"},
 		},
 		WithDefaultAction("allow"), // 设置默认动作为允许
