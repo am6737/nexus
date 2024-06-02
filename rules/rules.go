@@ -103,10 +103,10 @@ func (r *Rules) Inbound(p *packet.Packet) error {
 		if len(rule.Host) > 0 {
 			for _, host := range rule.Host {
 				_, network, err := net.ParseCIDR(host)
-				if err == nil && network.Contains(p.RemoteIP.ToNetIP()) {
+				if err == nil && network.Contains(p.LocalIP.ToNetIP()) {
 					matched = true
 					break
-				} else if host == p.RemoteIP.String() {
+				} else if host == p.LocalIP.String() {
 					matched = true
 					break
 				}

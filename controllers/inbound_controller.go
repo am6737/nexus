@@ -274,7 +274,7 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 		if pk.Protocol != packet.ProtoICMP {
 			oc.handleLocalVpnAddress(cleartext, pk, internalWriter)
 		}
-		fmt.Println("out => ", out)
+		//fmt.Println("out => ", string(out))
 		if err := oc.outside.WriteTo(out, addr); err != nil {
 			oc.logger.WithError(err).WithField("addr", addr).Error("数据转发到远程")
 		}
