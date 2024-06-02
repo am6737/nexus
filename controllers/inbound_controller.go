@@ -250,7 +250,9 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 	}
 
 	if err := oc.rules.Inbound(pk); err != nil {
-		oc.logger.WithError(err).Error("规则拒绝")
+		oc.logger.WithError(err).
+			WithField("pk", pk).
+			Error("规则拒绝")
 		return
 	}
 
@@ -295,7 +297,9 @@ func (oc *InboundControllers) handleHandshake(addr *udp.Addr, pk *packet.Packet,
 	}
 
 	if err := oc.rules.Inbound(pk); err != nil {
-		oc.logger.WithError(err).Error("规则拒绝")
+		oc.logger.WithError(err).
+			WithField("pk", pk).
+			Error("规则拒绝")
 		return
 	}
 
@@ -364,7 +368,9 @@ func (oc *InboundControllers) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 	}
 
 	if err := oc.rules.Inbound(pk); err != nil {
-		oc.logger.WithError(err).Error("规则拒绝")
+		oc.logger.WithError(err).
+			WithField("pk", pk).
+			Error("规则拒绝")
 		return
 	}
 
