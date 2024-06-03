@@ -48,7 +48,7 @@ func enroll(c *cli.Context) error {
 		return fmt.Errorf("enrollment failed: %s", enrollResponse.Msg)
 	}
 
-	fmt.Println("enrollResponse.Data.Config => ", enrollResponse.Data.Config)
+	//fmt.Println("enrollResponse.Data.Config => ", enrollResponse.Data.Config)
 
 	var yamlData config.Config
 	if err := yaml.Unmarshal([]byte(enrollResponse.Data.Config), &yamlData); err != nil {
@@ -62,7 +62,7 @@ func enroll(c *cli.Context) error {
 		return fmt.Errorf("could not convert JSON to YAML: %v", err)
 	}
 
-	fmt.Println(string(yamlBytes))
+	//fmt.Println(string(yamlBytes))
 
 	if err = ioutil.WriteFile("config.yaml", yamlBytes, 0644); err != nil {
 		return fmt.Errorf("could not write config to file: %v", err)
