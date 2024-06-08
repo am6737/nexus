@@ -77,7 +77,7 @@ func (oc *InboundControllers) WriteToVIP(p []byte, vip api.VpnIP) error {
 	//}
 
 	// 创建新的数据包，将头部和数据包拼接
-	p = append(p, messagePacket...)
+	p = append(messagePacket, p...)
 
 	host := oc.hosts.QueryVpnIp(vip)
 	if host == nil {
