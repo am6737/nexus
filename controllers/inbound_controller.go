@@ -83,9 +83,9 @@ func (oc *InboundControllers) WriteToVIP(p []byte, vip api.VpnIP) error {
 	if host == nil {
 		for _, lighthouse := range oc.lighthouses {
 			if lighthouse != nil {
-				oc.logger.WithField("目标地址", vip).
-					WithField("灯塔地址", lighthouse.Remote).
-					Info("出站流量转发到灯塔")
+				//oc.logger.WithField("目标地址", vip).
+				//	WithField("灯塔地址", lighthouse.Remote).
+				//	Info("出站流量转发到灯塔")
 				return oc.outside.WriteTo(p, lighthouse.Remote)
 			}
 		}
@@ -98,10 +98,10 @@ func (oc *InboundControllers) WriteToVIP(p []byte, vip api.VpnIP) error {
 		return err
 	}
 
-	oc.logger.WithField("目标地址", vip).
-		WithField("目标远程地址", host.Remote).
-		WithField("数据包", pk).
-		Info("出站流量")
+	//oc.logger.WithField("目标地址", vip).
+	//	WithField("目标远程地址", host.Remote).
+	//	WithField("数据包", pk).
+	//	Info("出站流量")
 	return oc.outside.WriteTo(p, host.Remote)
 }
 
@@ -255,12 +255,12 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 		return
 	}
 
-	oc.logger.WithField("远程地址", addr).
-		WithField("源地址", pk.LocalIP).
-		WithField("目标地址", pk.RemoteIP).
-		WithField("数据包", pk).
-		WithField("数据大小", len(p)).
-		Info("入站消息流量")
+	//oc.logger.WithField("远程地址", addr).
+	//	WithField("源地址", pk.LocalIP).
+	//	WithField("目标地址", pk.RemoteIP).
+	//	WithField("数据包", pk).
+	//	WithField("数据大小", len(p)).
+	//	Info("入站消息流量")
 
 	p = p[header.Len:]
 
