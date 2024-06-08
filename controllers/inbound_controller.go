@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/am6737/nexus/api"
 	"github.com/am6737/nexus/api/interfaces"
-	"github.com/am6737/nexus/cipher"
 	"github.com/am6737/nexus/config"
 	"github.com/am6737/nexus/host"
 	"github.com/am6737/nexus/transport/packet"
@@ -23,7 +22,7 @@ var _ interfaces.InboundController = &InboundControllers{}
 
 // InboundControllers 入站控制器 必须实现 interfaces.InboundController 接口
 type InboundControllers struct {
-	CipherState *cipher.NexusCipherState
+	//CipherState *cipher.NexusCipherState
 
 	outside     udp.Conn
 	hosts       *host.HostMap
@@ -66,19 +65,19 @@ func (oc *InboundControllers) WriteToVIP(p []byte, vip api.VpnIP) error {
 
 	tp := p
 
-	key, err := oc.hosts.GetVpnIpPublicKey(vip)
-	if err != nil {
-		oc.logger.WithField("vip", vip).Error("获取公钥失败")
-		return err
-	}
-
-	ciphertext, err := oc.CipherState.Encrypt(p, key)
-	if err != nil {
-		return err
-	}
+	//key, err := oc.hosts.GetVpnIpPublicKey(vip)
+	//if err != nil {
+	//	oc.logger.WithField("vip", vip).Error("获取公钥失败")
+	//	return err
+	//}
+	//
+	//ciphertext, err := oc.CipherState.Encrypt(p, key)
+	//if err != nil {
+	//	return err
+	//}
 
 	// 创建新的数据包，将头部和数据包拼接
-	p = append(messagePacket, ciphertext...)
+	p = append(p, messagePacket...)
 
 	host := oc.hosts.QueryVpnIp(vip)
 	if host == nil {
@@ -228,11 +227,11 @@ func (oc *InboundControllers) handlePacket(addr *udp.Addr, p []byte, h *header.H
 func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk *packet.Packet, addr *udp.Addr, internalWriter io.Writer) {
 	out := p
 
-	cleartext, err := oc.CipherState.Decrypt(p[header.Len:])
-	if err != nil {
-		oc.logger.WithError(err).Debug("handleInboundPacket 解密数据包出错")
-		return
-	}
+	//cleartext, err := oc.CipherState.Decrypt(p[header.Len:])
+	//if err != nil {
+	//	oc.logger.WithError(err).Debug("handleInboundPacket 解密数据包出错")
+	//	return
+	//}
 
 	//oc.logger.WithFields(logrus.Fields{
 	//	"addr":       addr,
@@ -244,7 +243,7 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 
 	// 解析数据包
 	// 将incoming参数设置为true
-	if err := packet.ParsePacket(cleartext, false, pk); err != nil {
+	if err := packet.ParsePacket(p[header.Len:], false, pk); err != nil {
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}
@@ -260,19 +259,20 @@ func (oc *InboundControllers) handleInboundPacket(h *header.Header, p []byte, pk
 		WithField("源地址", pk.LocalIP).
 		WithField("目标地址", pk.RemoteIP).
 		WithField("数据包", pk).
+		WithField("数据大小", len(p)).
 		Info("入站消息流量")
 
 	p = p[header.Len:]
 
 	if pk.RemoteIP == oc.localVpnIP {
-		replaceAddresses(cleartext, pk.LocalIP, pk.RemoteIP)
-		oc.handleLocalVpnAddress(cleartext, pk, internalWriter)
+		replaceAddresses(p, pk.LocalIP, pk.RemoteIP)
+		oc.handleLocalVpnAddress(p, pk, internalWriter)
 		return
 	}
 
 	if oc.localVpnIP == pk.LocalIP {
 		if pk.Protocol != packet.ProtoICMP {
-			oc.handleLocalVpnAddress(cleartext, pk, internalWriter)
+			oc.handleLocalVpnAddress(p, pk, internalWriter)
 		}
 		//fmt.Println("out => ", string(out))
 		if err := oc.outside.WriteTo(out, addr); err != nil {
@@ -378,15 +378,15 @@ func (oc *InboundControllers) handleLighthouses(addr *udp.Addr, pk *packet.Packe
 }
 
 func (oc *InboundControllers) handleTest(addr *udp.Addr, pk *packet.Packet, h *header.Header, p []byte) {
-	cleartext, err := oc.CipherState.Decrypt(p[header.Len:])
-	if err != nil {
-		oc.logger.WithError(err).Debug("解密数据包出错")
-		return
-	}
+	//cleartext, err := oc.CipherState.Decrypt(p[header.Len:])
+	//if err != nil {
+	//	oc.logger.WithError(err).Debug("解密数据包出错")
+	//	return
+	//}
 
 	// 解析数据包
 	// 将incoming参数设置为true
-	if err := packet.ParsePacket(cleartext[header.Len:], true, pk); err != nil {
+	if err := packet.ParsePacket(p[header.Len:], true, pk); err != nil {
 		oc.logger.WithError(err).Debug("解析数据包出错")
 		return
 	}

@@ -83,13 +83,13 @@ func NewControllersManager(ctx context.Context, config *config.Config, logger *l
 	// Initialize outbound controller
 	outboundLogger := logger.WithField("controller", "Outbound")
 	outboundController := &InboundControllers{
-		localVpnIP:  localVpnIP,
-		logger:      outboundLogger.Logger,
-		cfg:         config,
-		hosts:       hosts,
-		outside:     udpServer,
-		rules:       rulesEngine,
-		CipherState: cipherState,
+		localVpnIP: localVpnIP,
+		logger:     outboundLogger.Logger,
+		cfg:        config,
+		hosts:      hosts,
+		outside:    udpServer,
+		rules:      rulesEngine,
+		//CipherState: cipherState,
 	}
 
 	lighthouses := map[api.VpnIP]*host.HostInfo{}

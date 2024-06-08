@@ -53,7 +53,7 @@ var _ interfaces.HandshakeController = &HandshakeController{}
 type HandshakeController struct {
 	sync.RWMutex
 
-	CipherState *cipher.NexusCipherState
+	//CipherState *cipher.NexusCipherState
 
 	handshakeHostsRwMutex sync.RWMutex
 	localVIP              api.VpnIP
@@ -93,7 +93,7 @@ func NewHandshakeController(logger *logrus.Logger, mainHostMap *host.HostMap, li
 		lightHouses:     lightHouses,
 		ow:              ow,
 		localIndexID:    index,
-		CipherState:     CipherState,
+		//CipherState:     CipherState,
 	}
 }
 
@@ -523,12 +523,12 @@ func (hc *HandshakeController) buildLightHouseAndHostSyncPacket(vip api.VpnIP) (
 		return nil, err
 	}
 
-	publicKey := hc.CipherState.PublicKey()
+	//publicKey := hc.CipherState.PublicKey()
 
 	var buf bytes.Buffer
 	buf.Write(h)
 	buf.Write(pk)
-	buf.Write([]byte(publicKey))
+	buf.Write(make([]byte, 4))
 	return buf.Bytes(), nil
 }
 
@@ -542,11 +542,11 @@ func (hc *HandshakeController) buildHandshakePacket(vip api.VpnIP, ms header.Mes
 		return nil, err
 	}
 
-	publicKey := hc.CipherState.PublicKey()
+	//publicKey := hc.CipherState.PublicKey()
 
 	var buf bytes.Buffer
 	buf.Write(h)
 	buf.Write(pk)
-	buf.Write([]byte(publicKey))
+	buf.Write(make([]byte, 4))
 	return buf.Bytes(), nil
 }

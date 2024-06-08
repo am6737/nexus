@@ -36,12 +36,12 @@ func NewLighthouseController(logger *logrus.Logger, host *host.HostMap, ow inter
 		//handshakeHosts:       make(map[api.VpnIP]*host.HostInfo),
 		queryQueue:  make(chan api.VpnIP, 1000),
 		queryWorker: &sync.WaitGroup{},
-		CipherState: cipherState,
+		//CipherState: cipherState,
 	}
 }
 
 type LighthouseController struct {
-	CipherState *cipher.NexusCipherState
+	//CipherState *cipher.NexusCipherState
 
 	mu   sync.RWMutex
 	host *host.HostMap
@@ -341,11 +341,11 @@ func (lc *LighthouseController) buildHandshakePacket(vip api.VpnIP, ms header.Me
 		return nil, err
 	}
 
-	publicKey := lc.CipherState.PublicKey()
+	//publicKey := lc.CipherState.PublicKey()
 
 	var buf bytes.Buffer
 	buf.Write(h)
 	buf.Write(pk)
-	buf.Write([]byte(publicKey))
+	buf.Write(make([]byte, 4))
 	return buf.Bytes(), nil
 }
